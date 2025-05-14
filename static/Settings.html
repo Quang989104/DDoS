@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <title>Cài đặt hệ thống</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        body {
+            display: flex;
+            height: 100vh;
+            background-color: #f0f2f5;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: #333;
+            color: #fff;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            overflow-y: auto;
+        }
+        .sidebar h2 {
+            margin-bottom: 30px;
+            font-size: 24px;
+        }
+        .sidebar a {
+            color: #fff;
+            text-decoration: none;
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            font-size: 18px;
+        }
+        .sidebar a:hover {
+            background-color: #555;
+        }
+        .sidebar a i {
+            margin-right: 10px;
+        }
+        .content {
+            flex: 1;
+            padding: 30px;
+            margin-left: 260px;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background: #ddd;
+            margin-right: 10px;
+            border-radius: 5px;
+            transition: 0.3s;
+        }
+        .tab.active {
+            background: #007BFF;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .btn {
+            background: #007BFF;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: 0.3s;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <h2>Dashboard</h2>
+        <a href="main.html"><i class="fas fa-home"></i> Trang chủ</a>
+        <a href="traffic.html"><i class="fas fa-network-wired"></i> Giám sát mạng</a>
+        <a href="alerts.html"><i class="fas fa-bell"></i> Cảnh báo</a>
+        <a href="reports.html"><i class="fas fa-chart-line"></i> Báo cáo</a>
+        <a style="background-color: #555"href="settings.html"><i class="fas fa-cog"></i> Cài đặt</a>
+        <a id="logoutButton"href="#"><i class="fas fa-sign-out-alt"></i> Đăng xuất</a>
+    </div>
+
+    <div class="content">
+        <h1>Cài đặt hệ thống</h1>
+        <div class="tabs">
+            <div class="tab active" onclick="openTab(event, 'tab1')">Thông tin Admin</div>
+            <div class="tab" onclick="openTab(event, 'tab2')">Đổi mật khẩu</div>
+            <div class="tab" onclick="openTab(event, 'tab3')">Cật nhật Email</div>
+            <div class="tab" onclick="openTab(event, 'tab4')">Đổi tên</div>
+            <div class="tab" onclick="openTab(event, 'tab5')">Chỉnh sửa ngưỡng hệ thống</div>
+        </div>
+
+        <div class="tab-content active" id="tab1">
+            <h2>Thông tin</h2>
+            <p><strong>Tên đăng nhập:</strong></p>
+            <p><strong>Pass:</strong></p>
+            <p><strong>Email:</strong></p>
+        </div>
+
+        <div class="tab-content" id="tab2">
+            <h2>Đổi mật khẩu</h2>
+            <div class="form-group">
+                <label for="current-password">Mật khẩu hiện tại:</label>
+                <input type="password" id="current-password" placeholder="Nhập mật khẩu hiện tại">
+            </div>
+            <div class="form-group">
+                <label for="new-password">Mật khẩu mới:</label>
+                <input type="password" id="new-password" placeholder="Nhập mật khẩu mới">
+            </div>
+            <div class="form-group">
+                <label for="confirm-password">Nhập lại mật khẩu:</label>
+                <input type="password" id="confirm-password" placeholder="Nhập lại mật khẩu mới">
+            </div>
+            <button class="btn passChange">Lưu mật khẩu</button>
+        </div>
+
+        <div class="tab-content" id="tab3">
+            <h2>Cập Nhật Email</h2>
+            <div class="form-group">
+                <label for="new-email">Email:</label>
+                <input type="email" id="new-email" placeholder="Nhập email">
+            </div>
+            <button class="btn emailChange">Lưu Email</button>
+        </div>
+
+        <div class="tab-content" id="tab4">
+            <h2>Đổi tên</h2>
+            <div class="form-group">
+                <label for="new-username">Tên mới:</label>
+                <input type="text" id="new-username" placeholder="Nhập tên mới">
+            </div>
+            <button class="btn usernameChange">Lưu tên</button>
+        </div>
+
+        <div class="tab-content" id="tab5">
+            <h2>Chỉnh sửa ngưỡng hệ thống</h2>
+            <div class="form-group">
+                <label for="threshold">Nhập ngưỡng cảnh báo:</label>
+                <input type="number" id="threshold" placeholder="Nhập giá trị ngưỡng">
+            </div>
+            <button class="btn thresholdChange">Lưu ngưỡng</button>
+        </div>
+    </div>
+
+    <script>
+        let allAdmins = []
+        const ws = new WebSocket("ws://localhost:8000/ws/admin");
+    
+        ws.onopen = function(event) {
+            console.log("Đã kết nối tới WebSocket.");
+        };
+
+        ws.onmessage = function(event) {
+        try {
+            const data = JSON.parse(event.data);
+
+            if (Array.isArray(data)) {
+                allAdmins = data;
+            }
+            document.querySelector("#tab1").innerHTML = `
+                <h2>Thông tin</h2>
+                <p><strong>Tên đăng nhập:</strong> ${data[0].username}</p>
+                <p><strong>Pass:</strong> ${"*".repeat(data[0].password.length)}</p>
+                <p><strong>Email:</strong> ${data[0].email}</p>
+            `;
+        }
+            catch (error) {
+            console.error("Lỗi khi xử lý dữ liệu từ WebSocket:", error);
+        }
+    };
+    
+        ws.onerror = function(error) {
+            console.error("WebSocket error:", error);
+        };
+    
+        ws.onclose = function() {
+            console.warn("WebSocket bị đóng.");
+        };
+        function openTab(event, tabId) {
+            document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
+            document.querySelectorAll(".tab-content").forEach(content => content.classList.remove("active"));
+            event.currentTarget.classList.add("active");
+            document.getElementById(tabId).classList.add("active");
+        }
+        
+        
+        document.getElementById("logoutButton").addEventListener("click", function() {
+            window.location.href = "login.html";
+        });
+        document.querySelector(".passChange").addEventListener("click", async function() {
+    const currentPassword = document.getElementById("current-password");
+    const newPassword = document.getElementById("new-password");
+    const confirmPassword = document.getElementById("confirm-password");
+
+    if (newPassword.value !== confirmPassword.value) {
+        alert("Mật khẩu mới và xác nhận mật khẩu không khớp!");
+        return;
+    }
+
+    const adminId = allAdmins[0].id; // Lấy ID admin từ dữ liệu đã lưu hoặc WebSocket
+
+    // Gửi yêu cầu đổi mật khẩu
+    try {
+        const response = await fetch("/change-password", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                admin_id: adminId,
+                old_password: currentPassword.value,
+                new_password: newPassword.value,
+            }),
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            currentPassword.value = "";
+            newPassword.value = "";
+            confirmPassword.value = "";
+            alert(result.message);
+        } else {
+            alert(result.detail);
+        }
+    } catch (error) {
+        console.error("Lỗi khi gọi API:", error);
+        alert("Đã có lỗi xảy ra khi thay đổi mật khẩu.");
+    }
+});
+
+document.querySelector(".usernameChange").addEventListener("click", async function () {
+    const nameInput = document.getElementById("new-username"); // Input chứa tên mới
+
+    const adminId = allAdmins[0].id; // Lấy ID admin từ dữ liệu đã lưu
+
+    try {
+        const response = await fetch("/change-name", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                admin_id: adminId,
+                new_name: nameInput.value,
+            }),
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            nameInput.value = "";
+            alert(result.message);
+        } else {
+            alert(result.detail);
+        }
+    } catch (error) {
+        console.error("Lỗi khi gọi API:", error);
+        alert("Đã có lỗi xảy ra khi thay đổi tên.");
+    }
+});
+
+
+document.querySelector(".emailChange").addEventListener("click", async function () {
+    const emailInput = document.getElementById("new-email");
+    const newEmail = emailInput.value.trim();
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmail)) {
+        alert("Email không hợp lệ. Vui lòng nhập đúng định dạng!");
+        return;
+    }
+
+    const adminId = allAdmins[0].id; // Lấy ID admin từ dữ liệu lưu
+
+    try {
+        const response = await fetch("/change-email", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                admin_id: adminId,
+                new_email: newEmail,
+            }),
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            emailInput.value = "";
+            alert(result.message);
+        } else {
+            alert(result.detail);
+        }
+    } catch (error) {
+        console.error("Lỗi khi gọi API:", error);
+        alert("Đã có lỗi xảy ra khi thay đổi email.");
+    }
+});
+
+document.querySelector(".thresholdChange").addEventListener("click", async function () {
+    const thresholdInput = document.getElementById("threshold");
+    const thresholdValue = parseFloat(thresholdInput.value);
+
+    if (isNaN(thresholdValue) || thresholdValue < 0) {
+        alert("Vui lòng nhập giá trị threshold hợp lệ (số dương)");
+        return;
+    }
+
+    try {
+        const response = await fetch("http://127.0.0.1:8000/change-threshold", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ value: thresholdValue })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            thresholdInput.value = "";
+            alert(result.message);
+        } else {
+            alert("Lỗi: " + result.detail);
+        }
+    } catch (error) {
+        console.error("Lỗi khi gọi API:", error);
+        alert("Không thể kết nối đến server.");
+    }
+});
+
+    </script>
+    
+    
+</body>
+</html>

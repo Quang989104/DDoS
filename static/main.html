@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Phát hiện DDoS</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+        body { display: flex; height: 100vh; overflow: hidden; background-color: #f0f2f5; }
+        .sidebar { width: 250px; background: #333; color: #fff; padding: 20px; display: flex; flex-direction: column; }
+        .sidebar h2 { margin-bottom: 30px; font-size: 24px; }
+        .sidebar a { color: #fff; text-decoration: none;margin-bottom: 10px; padding: 15px 20px; border-radius: 5px; display: flex; align-items: center; font-size: 18px; }
+        .sidebar a:hover { background-color: #555; }
+        .sidebar a i { margin-right: 10px; }
+        .main-content { flex: 1; padding: 20px; overflow-y: auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+        .card { padding: 15px; border-radius: 8px; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; }
+        .card h3 { margin-bottom: 5px; font-size: 16px; }
+        .card p { font-size: 14px; font-weight: bold; }
+        .charts { display: grid; grid-template-columns: 2fr 1fr; gap: 15px; }
+        canvas { background: #fff; border-radius: 8px; padding: 10px; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>Dashboard</h2>
+        <a style="background-color: #555"href="#"><i class="fas fa-home"></i> Trang chủ</a>
+        <a href="traffic.html"><i class="fas fa-network-wired"></i> Giám sát mạng</a>
+        <a href="alerts.html"><i class="fas fa-bell"></i> Cảnh báo</a>
+        <a href="reports.html"><i class="fas fa-chart-line"></i> Báo cáo</a>
+        <a href="settings.html"><i class="fas fa-cog"></i> Cài đặt</a>
+        <a id="logoutButton"href="#"><i class="fas fa-sign-out-alt"></i> Đăng xuất</a>
+    </div>
+    <div class="main-content">
+        <div class="header">
+            <h1>Hệ thống phát hiện tấn công DDoS</h1>
+        </div>
+        <div class="cards">
+            <div class="card"><i class="fas fa-network-wired"></i><h3>Lưu lượng</h3><p id="traffic">0 Mbps</p></div>
+            <div class="card"><i class="fas fa-bell"></i><h3>Cảnh báo</h3><p id="alerts">0</p></div>
+            <div class="card"><i class="fas fa-shield-alt"></i><h3>Tấn công</h3><p id="attacks">0</p></div>
+            <div class="card"><i class="fas fa-file-alt"></i><h3>Báo cáo</h3><p id="reports">0</p></div>
+        </div>
+        <div class="charts">
+            <canvas id="trafficChart"></canvas>
+            <canvas id="alertChart"></canvas>
+        </div>
+    </div>
+    <script>
+        let allReports = [];
+        let alertData = [];
+        let allTrafficData = [];
+    
+        function connectWebSocketReports() {
+            const socket2 = new WebSocket("ws://localhost:8000/ws/reports");
+    
+            socket2.onopen = function () {
+                console.log("Đã kết nối tới WebSocket Reports.");
+            };
+    
+            socket2.onmessage = function (event) {
+                try {
+                    const data2 = JSON.parse(event.data);
+    
+                    if (Array.isArray(data2)) {
+                        allReports = data2;
+                        document.getElementById("reports").innerText = allReports.length;
+                        document.getElementById("attacks").innerText = allReports.length; // nếu tấn công cũng = reports
+                    } else {
+                        throw new Error("Dữ liệu không phải dạng mảng.");
+                    }
+                } catch (error) {
+                    console.error("Lỗi khi xử lý dữ liệu từ WebSocket Reports:", error);
+                }
+            };
+    
+            socket2.onerror = function (event) {
+                console.error("Lỗi WebSocket Reports:", event);
+            };
+    
+            socket2.onclose = function () {
+                console.log("WebSocket Reports đóng. Kết nối lại...");
+                setTimeout(connectWebSocketReports, 1000);
+            };
+        }
+    
+        function connectWebSocketAlerts() {
+            const socket1 = new WebSocket("ws://localhost:8000/ws/alerts");
+    
+            socket1.onmessage = function (event) {
+                try {
+                    const data1 = JSON.parse(event.data);
+    
+                    if (Array.isArray(data1)) {
+                        alertData = data1;
+                        document.getElementById("alerts").innerText = alertData.length;
+                    } else {
+                        throw new Error("Dữ liệu không phải dạng mảng.");
+                    }
+                } catch (error) {
+                    console.error("Lỗi WebSocket Alerts:", error);
+                }
+            };
+    
+            socket1.onclose = function () {
+                console.log("WebSocket Alerts đã đóng.");
+            };
+    
+            socket1.onerror = function (error) {
+                console.error("Lỗi WebSocket Alerts:", error);
+            };
+        }
+    
+        function connectWebSocketTraffic() {
+            const socket = new WebSocket("ws://127.0.0.1:8000/ws/traffic");
+    
+            socket.onopen = () => {
+                console.log("Đã kết nối tới WebSocket Traffic.");
+            };
+    
+            socket.onmessage = function (event) {
+                try {
+                    let data = JSON.parse(event.data);
+                    const timestamp = data.timestamp;
+                    const bandwidth = data.bandwidth_kbps;
+    
+                    labels.push(timestamp);
+                    dataPoints.push(bandwidth);
+    
+                    if (labels.length > 10) labels.shift();
+                    if (dataPoints.length > 10) dataPoints.shift();
+    
+                    trafficChart.update();
+    
+                    allTrafficData.push(data);
+    
+                    // Hiển thị lưu lượng mới nhất lên giao diện
+                    document.getElementById("traffic").innerText = bandwidth + " Mbps";
+    
+                } catch (e) {
+                    console.warn("Lỗi khi xử lý dữ liệu từ WebSocket Traffic:", e);
+                }
+            };
+    
+            socket.onerror = function (error) {
+                console.log("WebSocket Traffic lỗi:", error);
+            };
+        }
+    
+        let labels = [];
+        let dataPoints = [];
+    
+        const ctx1 = document.getElementById('trafficChart').getContext('2d');
+        const trafficChart = new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Lưu lượng mạng (Mbps)',
+                    data: dataPoints,
+                    borderColor: 'blue',
+                    backgroundColor: 'rgba(0, 0, 255, 0.1)',
+                    fill: true
+                }]
+            },
+            options: {
+                animation: false,
+                scales: {
+                    x: { title: { display: true, text: 'Thời gian' } },
+                    y: { title: { display: true, text: 'Mbps' }, suggestedMin: 0, suggestedMax: 100 }
+                }
+            }
+        });
+        document.getElementById("logoutButton").addEventListener("click", function() {
+            window.location.href = "login.html";
+        });
+        // Gọi các kết nối WebSocket
+        connectWebSocketReports();
+        connectWebSocketAlerts();
+        connectWebSocketTraffic();
+    </script>
+    
+    
+    
+</body>
+</html>

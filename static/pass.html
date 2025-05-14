@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quên Mật Khẩu</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(to right, #833ab4, #5c2d91, #3b5998);
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            width: 300px;
+        }
+        h2 {
+            margin-bottom: 15px;
+        }
+        input[type="email"] {
+            width: 93%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #5c2d91;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #3b5998;
+        }
+        .back {
+            margin-top: 10px;
+            display: block;
+            color: #5c2d91;
+            text-decoration: none;
+        }
+        .back:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Quên Mật Khẩu</h2>
+        <p>Nhập email liên kết để nhận mật khẩu.</p>
+        <input type="email" id="email" placeholder="Nhập email" required>
+        <button onclick="sendForgotPassword()">Gửi</button>
+        <a href="login.html" class="back">Quay lại đăng nhập</a>
+        <p id="result" style="margin-top: 10px;"></p>
+    </div>
+
+    <script>
+    async function sendForgotPassword() {
+        const emailInput = document.getElementById("email");
+        const resultElement = document.getElementById("result");
+
+        const email = emailInput.value.trim();
+        if (!email) {
+            resultElement.innerText = "Vui lòng nhập email.";
+            resultElement.style.color = "red";
+            return;
+        }
+
+        try {
+            const response = await fetch("http://localhost:8000/forgot-password", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ admin_email: email })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                resultElement.innerText = data.message || "Đã gửi email đặt lại mật khẩu.";
+                resultElement.style.color = "green";
+                emailInput.value = "";
+            } else {
+                resultElement.innerText = data.detail || "Có lỗi xảy ra.";
+                resultElement.style.color = "red";
+            }
+        } catch (error) {
+            resultElement.innerText = "Không thể kết nối đến server.";
+            resultElement.style.color = "red";
+        }
+    }
+</script>
+
+</body>
+</html>

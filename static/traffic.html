@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traffic Monitoring - Phát hiện tấn công DDoS</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        *{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        body {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            background-color: #f0f2f5;
+        }
+        .sidebar {
+            width: 250px;
+            background: #333;
+            color: #fff;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar h2 {
+            margin-bottom: 30px;
+            font-size: 24px;
+        }
+        .sidebar a {
+            color: #fff;
+            text-decoration: none;
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            font-size: 18px;
+        }
+        .sidebar a:hover {
+            background-color: #555;
+        }
+        .sidebar a i {
+            margin-right: 10px;
+        }
+        .main-content { flex: 1; padding: 20px; overflow-y: auto; }
+        h1 { text-align: center; margin-bottom: 20px; }
+        .charts { display: flex; justify-content: space-around; }
+        
+        .table-container { margin-top: 20px; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        th { background-color: #f4f4f4; }
+        .search-box {
+            margin-bottom: 10px;
+        }
+        .search-box input {
+            width: 100%;
+            padding: 8px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>Dashboard</h2>
+        <a href="main.html"><i class="fas fa-home"></i> Trang chủ</a>
+        <a style="background-color: #555"href="traffic.html"><i class="fas fa-network-wired"></i> Giám sát mạng</a>
+        <a href="alerts.html"><i class="fas fa-bell"></i> Cảnh báo</a>
+        <a href="reports.html"><i class="fas fa-chart-line"></i> Báo cáo</a>
+        <a href="settings.html"><i class="fas fa-cog"></i> Cài đặt</a>
+        <a id="logoutButton"href="#"><i class="fas fa-sign-out-alt"></i> Đăng xuất</a>
+    </div>
+    <div class="main-content">
+        <h1>Traffic Monitoring</h1>
+        <div class="charts">
+            <canvas id="trafficChart"></canvas>
+        </div>
+        <div class="table-container">
+            <h2>Top IP Đáng Ngờ</h2>
+            <div class="search-box">
+                <input type="text" id="searchIp" placeholder="Nhập IP để lọc...">
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Thời gian</th>
+                        <th>IP</th>
+                        <th>Số gói tin</th>
+                        <th>Băng thông (Mbps)</th>
+                    </tr>
+                </thead>
+                <tbody id="suspiciousIpTable">
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <script>
+        const socket = new WebSocket("ws://127.0.0.1:8000/ws/traffic");
+    
+        socket.onopen = () => {
+            console.log("Connected to WebSocket");
+        };
+    
+        socket.onmessage = function(event) {
+            console.log("Dữ liệu nhận từ server:", event.data);
+    
+            try {
+                // Giải mã JSON nhận được từ WebSocket
+                let data = JSON.parse(event.data);
+                console.log("Dữ liệu sau khi parse:", data);
+    
+                // Kiểm tra và lấy giá trị timestamp và bandwidth_kb từ dữ liệu
+                const timestamp = data.timestamp; // Sử dụng timestamp trong dữ liệu
+                const bandwidth = data.bandwidth_kbps; // Dùng bandwidth_kb từ dữ liệu
+    
+                // Thêm thông tin vào biểu đồ
+                labels.push(timestamp);
+                dataPoints.push(bandwidth);
+                
+                // Giới hạn số lượng điểm dữ liệu và nhãn hiển thị trên biểu đồ
+                if (labels.length > 10) labels.shift();
+                if (dataPoints.length > 10) dataPoints.shift();
+                
+                // Cập nhật biểu đồ với dữ liệu mới
+                trafficChart.update();
+    
+                // Cập nhật bảng dữ liệu
+                allTrafficData.push(data); // Lưu lại tất cả dữ liệu vào biến allTrafficData
+                if (ipFilter === "") {
+                    updateTable(allTrafficData, true); // top 10
+                } else {
+                    const filtered = allTrafficData.filter(item => item.source_ip.includes(ipFilter));
+                    updateTable(filtered, false); // tất cả bản ghi khớp
+                }
+            } catch (e) {
+                console.warn("Lỗi khi xử lý dữ liệu từ WebSocket:", e);
+                console.log("Dữ liệu nhận được:", event.data);
+            }
+        };
+    
+        socket.onerror = function(error) {
+            console.log("WebSocket error:", error);
+        };
+    
+        let labels = [];
+        let dataPoints = [];
+        let allTrafficData = [];
+        let ipFilter = ""; // Lưu trạng thái bộ lọc IP
+    
+        const ctx1 = document.getElementById('trafficChart').getContext('2d');
+        const trafficChart = new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Lưu lượng mạng (Mbps)',
+                    data: dataPoints,
+                    borderColor: 'blue',
+                    backgroundColor: 'rgba(0, 0, 255, 0.1)',
+                    fill: true
+                }]
+            },
+            options: {
+                animation: false,
+                scales: {
+                    x: { title: { display: true, text: 'Thời gian' } },
+                    y: { title: { display: true, text: 'Mbps' }, suggestedMin: 0, suggestedMax: 100 }
+                }
+            }
+        });
+    
+        function updateTable(data, limit = true) {
+    const tableBody = document.getElementById('suspiciousIpTable');
+    tableBody.innerHTML = '';
+
+    // Lọc các IP có bandwidth > 70
+    let filteredData = data.filter(item => item.bandwidth_kbps > 70);
+
+    if (limit) {
+        filteredData = filteredData
+            .sort((a, b) => b.bandwidth_kbps - a.bandwidth_kbps)
+            .slice(0, 10);
+    }
+
+    filteredData.forEach(item => {
+        const row = document.createElement('tr');
+        row.innerHTML = 
+            `<td>${item.timestamp}</td>
+             <td>${item.source_ip}</td>
+             <td>${item.packet_count}</td>
+             <td>${item.bandwidth_kbps}</td>`;
+        tableBody.appendChild(row);
+    });
+}
+
+
+
+
+
+        
+    
+        // Cập nhật biến ipFilter theo input người dùng
+        document.getElementById('searchIp').addEventListener('input', function() {
+            ipFilter = this.value.trim();
+            if (ipFilter === "") {
+                updateTable(allTrafficData, true); // quay về top 10
+            } else {
+                const filtered = allTrafficData.filter(item => item.source_ip.includes(ipFilter));
+                updateTable(filtered, false);
+            }
+        });
+        document.getElementById("logoutButton").addEventListener("click", function() {
+            window.location.href = "login.html";
+        });
+    </script>
+    
+</body>
+</html>

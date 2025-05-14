@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng Nhập</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #833ab4, #4a90e2);
+        }
+        .login-container {
+            width: 350px;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+        .login-container h2 {
+            margin-bottom: 20px;
+            font-size: 24px;
+            color: #333;
+            font-weight: bold;
+        }
+        .form-group {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-bottom: 2px solid #ccc;
+            font-size: 16px;
+            outline: none;
+            background: transparent;
+        }
+        .form-group input:focus {
+            border-bottom: 2px solid #4a90e2;
+        }
+        .btn {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background: linear-gradient(to right, #833ab4, #4a90e2);
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .btn:hover {
+            background: linear-gradient(to right, #4a90e2, #833ab4);
+        }
+        .forgot-password {
+            display: block;
+            text-align: right;
+            font-size: 14px;
+            margin-top: 5px;
+            color: #4a90e2;
+            text-decoration: none;
+            transition: 0.3s;
+        }
+        .forgot-password:hover {
+            text-decoration: underline;
+        }
+        .signup {
+            margin-top: 15px;
+            font-size: 14px;
+        }
+        .signup a {
+            color: #4a90e2;
+            text-decoration: none;
+        }
+        .signup a:hover {
+            text-decoration: underline;
+        }
+        .error {
+            color: red;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-container">
+        <h2>Đăng nhập</h2>
+        <div class="form-group">
+            <input type="text" id="username" placeholder="Username" required>
+        </div>
+        <div class="form-group">
+            <input type="password" id="password" placeholder="Password" required>
+        </div>
+        <a href="#" class="forgot-password" onclick="forgotPassword()">Quên mật khẩu?</a>
+        <button class="btn" onclick="login()">Đăng nhập</button>
+        <p id="error-message" class="error"></p>
+        
+    </div>
+
+    <script>
+        async function login() {
+            let username = document.getElementById("username").value;
+            let password = document.getElementById("password").value;
+            let errorMessage = document.getElementById("error-message");
+    
+            // Kiểm tra thông tin đăng nhập có trống không
+            if (username === "" || password === "") {
+                errorMessage.innerText = "Vui lòng nhập đầy đủ thông tin!";
+                return;
+            }
+    
+            try {
+                // Gửi yêu cầu POST đến FastAPI để kiểm tra tài khoản
+                const response = await fetch("http://localhost:8000/login", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ username: username, password: password })
+                });
+    
+                // Nếu đăng nhập thành công
+                if (response.ok) {
+                    errorMessage.innerText = "";
+                    const result = await response.json();
+                    alert(result.message);
+                    window.location.href = "main.html"; // Chuyển hướng đến trang chính
+                } else {
+                    // Nếu không thành công, thông báo lỗi
+                    const error = await response.json();
+                    errorMessage.innerText = error.detail;
+                }
+            } catch (error) {
+                errorMessage.innerText = "Có lỗi xảy ra khi kết nối với máy chủ!";
+                console.error("Lỗi khi gửi yêu cầu:", error);
+            }
+        }
+    
+        function forgotPassword() {
+            window.location.href = "pass.html";
+        }
+    </script>
+    
+
+</body>
+</html>

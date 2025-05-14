@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cảnh báo - Phần mềm phát hiện tấn công DDoS</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+        body { display: flex; height: 100vh; overflow: hidden; background-color: #f0f2f5; }
+        .sidebar { width: 250px; background: #333; color: #fff; padding: 20px; display: flex; flex-direction: column; }
+        .sidebar h2 { margin-bottom: 30px; font-size: 24px; }
+        .sidebar a { color: #fff; text-decoration: none;margin-bottom: 10px; padding: 15px 20px; border-radius: 5px; display: flex; align-items: center; font-size: 18px; }
+        .sidebar a:hover { background-color: #555; }
+        .sidebar a i { margin-right: 10px; }
+        .main-content { flex: 1; padding: 20px; overflow-y: auto; background-color: #f0f2f5; }
+        h1 { margin-bottom: 20px; }
+        .filter-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+        .filter-bar input, .filter-bar select, .filter-bar button { padding: 8px; font-size: 16px; }
+        table { width: 100%; border-collapse: collapse; background-color: #fff; border-radius: 8px; overflow: hidden; }
+        table th, table td { padding: 10px; border-bottom: 1px solid #ddd; text-align: left; }
+        table th { background-color: #f9fafb; }
+        .alert-High { background-color: #f8d7da; color: #721c24; }
+        .alert-Medium { background-color: #fff3cd; color: #856404; }
+        .alert-Low { background-color: #d4edda; color: #155724; }
+        .actions button { margin-right: 5px; padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; }
+        .btn-delete { background-color: #dc3545; color: white; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>Dashboard</h2>
+        <a href="main.html"><i class="fas fa-home"></i> Trang chủ</a>
+        <a href="traffic.html"><i class="fas fa-network-wired"></i> Giám sát mạng</a>
+        <a style="background-color: #555"href="alerts.html"><i class="fas fa-bell"></i> Cảnh báo</a>
+        <a href="reports.html"><i class="fas fa-chart-line"></i> Báo cáo</a>
+        <a href="settings.html"><i class="fas fa-cog"></i> Cài đặt</a>
+        <a id="logoutButton"href="#"><i class="fas fa-sign-out-alt"></i> Đăng xuất</a>
+    </div>
+    <div class="main-content">
+        <h1>Quản lý Cảnh báo</h1>
+        <div class="filter-bar">
+            <input type="text" id="searchInput" placeholder="Tìm kiếm IP nguồn...">
+            <select id="levelFilter">
+                <option value="all">Tất cả mức độ</option>
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+            </select>
+            <input type="date" id="dateFilter">
+            <button onclick="exportReport()">Xuất cảnh báo</button>
+        </div>
+        <table id="alertTable">
+            <thead>
+                <tr>
+                    <th>Thời gian</th>
+                    <th>Loại cảnh báo</th>
+                    <th>Nội dung cảnh báo</th>
+                    <th>Mức độ</th>
+                    <th>IP nguồn</th>
+                    <th>Tổng số gói tin</th>
+                    <th>Băng thông (KB/s)</th>
+                    <th>Quản trị viên</th>
+                    <th>Hành động</th>
+                </tr>
+            </thead>
+            <tbody id="alertBody">
+                <!-- Dữ liệu sẽ được sinh động ở đây -->
+            </tbody>
+        </table>
+    </div>
+    <script>
+        // Tạo kết nối WebSocket
+        const socket = new WebSocket("ws://localhost:8000/ws/alerts");  // Đảm bảo URL này đúng với endpoint của WebSocket trên server
+    
+        // Biến chứa dữ liệu cảnh báo
+        let alertData = [];
+    
+        // Lắng nghe thông báo từ WebSocket
+        socket.onmessage = async function(event) {
+            const data = JSON.parse(event.data);
+            console.log(data);
+            
+            alertData = data;  // Cập nhật dữ liệu cảnh báo từ server
+            renderAlerts();  // Gọi lại hàm render để hiển thị dữ liệu mới
+            for (const alert of data) {
+        try {
+            const response = await fetch("/send-alert-email", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(alert)
+            });
+
+            const result = await response.json();
+            console.log("Email sent result:", result);
+
+        } catch (error) {
+            console.error("Lỗi khi gửi dữ liệu về API gửi email:", error);
+        }
+    }
+        };
+    
+        // Xử lý sự kiện khi WebSocket bị đóng
+        socket.onclose = function() {
+            console.log("WebSocket connection closed.");
+        };
+    
+        // Xử lý sự kiện lỗi
+        socket.onerror = function(error) {
+            console.error("WebSocket error:", error);
+        };
+    
+        function capitalize(text) {
+            return text.charAt(0).toUpperCase() + text.slice(1);
+        }
+    
+        function renderAlerts() {
+            const tbody = document.getElementById("alertBody");
+            tbody.innerHTML = "";
+    
+            const searchValue = document.getElementById("searchInput").value.toLowerCase();
+            const levelFilter = document.getElementById("levelFilter").value;
+            const dateFilter = document.getElementById("dateFilter").value;
+    
+            const filtered = alertData.filter(alert => {
+                const matchIP = alert.source_ip.toLowerCase().includes(searchValue);
+                const matchLevel = levelFilter === "all" || alert.level === levelFilter;
+                const matchDate = !dateFilter || alert.timestamp.startsWith(dateFilter);
+                return matchIP && matchLevel && matchDate;
+            });
+    
+            for (const alert of filtered) {
+                const row = document.createElement("tr");
+                row.classList.add(`alert-${alert.level}`);
+    
+                row.innerHTML = `
+                    <td>${alert.timestamp}</td>
+                    <td>${alert.alert_type}</td>
+                    <td>${alert.alert_message}</td>
+                    <td>${capitalize(alert.level)}</td>
+                    <td>${alert.source_ip}</td>
+                    <td>${alert.packet_count}</td>
+                    <td>${alert.bandwidth_kbps}</td>
+                    <td>${alert.admin_name}</td>
+                    <td class="actions">
+                        <button class="btn-delete" onclick="deleteAlert('${alert.id}')">Xoá</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            }
+        }
+    
+    
+        async function deleteAlert(id) {
+            try {
+                const confirmDelete = confirm("Bạn có chắc muốn xoá cảnh báo này?");
+                if (!confirmDelete) return;
+    
+                await fetch(`/api/alerts/${id}`, { method: 'DELETE' });
+                alert("Xoá cảnh báo thành công!");
+                renderAlerts();
+            } catch (error) {
+                console.error("Lỗi khi xoá cảnh báo:", error);
+                alert("Không thể xoá cảnh báo. Vui lòng thử lại.");
+            }
+        }
+        function exportReport() {
+    const tableBody = document.querySelector("#alertTable tbody");
+    const rows = tableBody.querySelectorAll("tr");
+
+    if (rows.length === 0) {
+        alert("Không có dữ liệu để xuất báo cáo.");
+        return;
+    }
+
+    // Dòng tiêu đề
+    let csv = "Thời gian,Loại cảnh báo,Nội dung,Mức độ,IP nguồn,Tổng số gói tin,Băng thông (KB/s),Quản trị viên\n";
+
+    rows.forEach(row => {
+        const cols = row.querySelectorAll("td");
+        const rowData = Array.from(cols).slice(0, 8).map(td => `"${td.innerText.replace(/"/g, '""')}"`);
+        csv += rowData.join(",") + "\n";
+    });
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    const dateStr = new Date().toISOString().split("T")[0];
+    link.setAttribute("download", `bao_cao_canh_bao_${dateStr}.csv`);
+    link.style.display = "none";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+    
+        // Sự kiện lọc tìm kiếm
+        document.getElementById("searchInput").addEventListener("input", renderAlerts);
+        document.getElementById("levelFilter").addEventListener("change", renderAlerts);
+        document.getElementById("dateFilter").addEventListener("change", renderAlerts);
+    
+        // Tải lần đầu
+        window.addEventListener("load", renderAlerts);
+        document.getElementById("logoutButton").addEventListener("click", function() {
+            window.location.href = "login.html";
+        });
+    </script>
+    
+
+
+</body>
+</html>
