@@ -8,27 +8,36 @@ from datetime import datetime
 import sqlite3
 import asyncio
 from pydantic import BaseModel, EmailStr
-import threading
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from fastapi import WebSocket
+from typing import List
+from fastapi import WebSocketDisconnect
+import sqlite3
+from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import WebSocket, WebSocketDisconnect
+import sqlite3
+import json
+from fastapi import WebSocket, WebSocketDisconnect
+import sqlite3
+import asyncio
+from fastapi import WebSocket, WebSocketDisconnect
+import sqlite3
+import asyncio
+from fastapi import HTTPException
 
 
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Thay "*" bằng ["http://localhost:8000"] nếu cần giới hạn
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-from fastapi import WebSocket
-from typing import List
-from fastapi import WebSocketDisconnect
-
 active_connections: List[WebSocket] = []
-import sqlite3
+
 
 
 # Kết nối tới cơ sở dữ liệu
@@ -306,41 +315,40 @@ async def reset_password(request: Request, new_password: str = Form(...)):
     return {"message": "Đặt lại mật khẩu thành công!"}
 
 
+from fastapi import Request
+from fastapi import FastAPI
+from email.mime.text import MIMEText
+import smtplib
+
 @app.post("/send-alert-email")
 async def send_alert_email(request: Request):
     data = await request.json()
-
-    # Lấy các thông tin từ client gửi lên
-    alert_message = data.get("alert_message")
-    alert_type = data.get("alert_type")
-    level = data.get("level")
-    source_ip = data.get("source_ip")
-    bandwidth = data.get("bandwidth_kbps")
-    packet_count = data.get("packet_count")
+    alerts = data.get("alerts", [])
     admin_email = data.get("admin_email")
     admin_name = data.get("admin_name")
 
-    # Soạn nội dung email
-    subject = f"[Cảnh báo] {alert_type} - {level.upper()}"
-    body = f"""
-    Xin chào {admin_name},
+    if not alerts:
+        return {"error": "No alerts to send"}
 
-    Một cảnh báo mới vừa được ghi nhận:
+    # Soạn nội dung email tổng hợp
+    subject = "[Cảnh báo] Có {} cảnh báo mới từ hệ thống".format(len(alerts))
 
-    - Nội dung: {alert_message}
-    - Loại tấn công: {alert_type}
-    - Tổng số gói tin: {packet_count}
-    - Băng thông: {bandwidth}
-    - Mức độ: {level}
-    - IP nguồn: {source_ip}
+    body = f"Xin chào {admin_name},\n\n"
+    body += "Bạn có {} cảnh báo mới:\n\n".format(len(alerts))
 
-    Vui lòng kiểm tra hệ thống để xử lý kịp thời.
+    for idx, alert in enumerate(alerts, 1):
+        body += f"""Cảnh báo #{idx}:
+- Nội dung: {alert.get("alert_message")}
+- Loại tấn công: {alert.get("alert_type")}
+- Tổng số gói tin: {alert.get("packet_count")}
+- Băng thông: {alert.get("bandwidth_kbps")}
+- Mức độ: {alert.get("level")}
+- IP nguồn: {alert.get("source_ip")}
 
-    Trân trọng,
-    Hệ thống Giám sát mạng
-    """
+"""
 
-    # Thông tin tài khoản Gmail để gửi
+    body += "\nVui lòng kiểm tra hệ thống để xử lý kịp thời.\n\nTrân trọng,\nHệ thống Giám sát mạng"
+
     sender_email = "quangloanthanhchien4@gmail.com"
     sender_password = "nvtwvjpwnenkzrhj"
 
@@ -350,21 +358,14 @@ async def send_alert_email(request: Request):
         msg["From"] = sender_email
         msg["To"] = admin_email
 
-        # Kết nối tới SMTP server
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login(sender_email, sender_password)
             server.sendmail(sender_email, [admin_email], msg.as_string())
 
-        return {"message": "Email sent successfully!"}
+        return {"message": "Gửi email thành công"}
 
     except Exception as e:
         return {"error": str(e)}
-
-
-
-
-
-threshold = 70
 
 # Định nghĩa schema dữ liệu gửi lên
 class ThresholdRequest(BaseModel):
@@ -540,7 +541,6 @@ def login(data: LoginRequest):
         raise HTTPException(status_code=404, detail="Không tìm thấy tài khoản")
     
 
-
 @app.websocket("/ws/alerts")
 async def websocket_alerts(websocket: WebSocket):
     await websocket.accept()
@@ -612,77 +612,14 @@ async def websocket_alerts(websocket: WebSocket):
                     # Cập nhật số lượng bản ghi
                     last_count = current_count
 
-            await asyncio.sleep(3)  # Tùy chỉnh thời gian kiểm tra lại
+            await asyncio.sleep(1)  # Tùy chỉnh thời gian kiểm tra lại
 
     except WebSocketDisconnect:
         print("🔌 WebSocket client disconnected.")
     except Exception as e:
         print(f"❌ Lỗi WebSocket Alerts: {e}")
 
-"""
-@app.websocket("/ws/alerts")
-async def websocket_alerts(websocket: WebSocket):
-    await websocket.accept()
-    last_count = -1  # khởi tạo số lượng bản ghi ban đầu
 
-    try:
-        while True:
-            with sqlite3.connect("network_monitoring.db") as conn:
-                cursor = conn.cursor()
-
-                # Lấy số lượng bản ghi hiện tại
-                cursor.execute("SELECT COUNT(*) FROM Alerts")
-                current_count = cursor.fetchone()[0]
-
-                if current_count != last_count:
-                    # Nếu có sự thay đổi, lấy dữ liệu mới
-                    cursor.execute("SELECT * FROM Alerts ORDER BY timestamp DESC")
-                    rows = cursor.fetchall()
-
-                    alerts = []
-                    for row in rows:
-                        traffic_log_id = row[1]
-
-                        bandwidth_kbps = None
-                        packet_count = None
-                        source_ip = None
-
-                        if traffic_log_id:
-                            cursor.execute(
-                                "SELECT source_ip, bandwidth_kbps, packet_count FROM TrafficLogs WHERE id = ?",
-                                (traffic_log_id,)
-                            )
-                            traffic_data = cursor.fetchone()
-                            if traffic_data:
-                                source_ip, bandwidth_kbps, packet_count = traffic_data
-
-                        alert = {
-                            "id": row[0],
-                            "attack_log_id": row[1],
-                            "admin_id": row[2],
-                            "timestamp": row[3],
-                            "alert_message": row[4],
-                            "alert_type": row[5],
-                            "level": row[6],
-                            "source_ip": source_ip,
-                            "bandwidth_kbps": bandwidth_kbps,
-                            "packet_count": packet_count
-                        }
-                        alerts.append(alert)
-
-                    # Gửi dữ liệu mới đến client
-                    await websocket.send_json(alerts)
-
-                    # Cập nhật số lượng bản ghi
-                    last_count = current_count
-
-            await asyncio.sleep(3)  # Tùy chỉnh thời gian kiểm tra lại
-
-    except WebSocketDisconnect:
-        print("🔌 WebSocket client disconnected.")
-    except Exception as e:
-        print(f"❌ Lỗi WebSocket Alerts: {e}")
-"""
 
 @app.websocket("/ws/reports")
 async def websocket_reports(websocket: WebSocket):
@@ -729,201 +666,162 @@ async def websocket_reports(websocket: WebSocket):
                 last_count = current_count
 
             conn.close()
-            await asyncio.sleep(5)
+            await asyncio.sleep(1)
 
     except WebSocketDisconnect:
         print("⚠️ Client đã ngắt kết nối WebSocket.")
     except Exception as e:
         print(f"❌ Lỗi khi xử lý WebSocket: {e}")
+
+import aiosqlite
 
 @app.delete("/api/alerts/{alert_id}")
 async def delete_alert(alert_id: int):
-    conn = sqlite3.connect("network_monitoring.db")
-    cursor = conn.cursor()
+    async with aiosqlite.connect("network_monitoring.db") as db:
+        cursor = await db.execute("SELECT * FROM Alerts WHERE id = ?", (alert_id,))
+        row = await cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Alert not found")
 
-    # Kiểm tra alert tồn tại
-    cursor.execute("SELECT * FROM Alerts WHERE id = ?", (alert_id,))
-    row = cursor.fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(status_code=404, detail="Alert not found")
-
-    # Xoá
-    cursor.execute("DELETE FROM Alerts WHERE id = ?", (alert_id,))
-    conn.commit()
-    conn.close()
+        await db.execute("DELETE FROM Alerts WHERE id = ?", (alert_id,))
+        await db.commit()
     return {"message": "Alert deleted successfully"}
 
-"""@app.websocket("/ws/reports")
-async def websocket_reports(websocket: WebSocket):
-    await websocket.accept()
 
-    try:
-        while True:
-            # Kết nối đến database
-            conn = sqlite3.connect("network_monitoring.db")
-            cursor = conn.cursor()
-
-            # Lấy dữ liệu từ bảng AttackLogs
-            cursor.execute("SELECT * FROM AttackLogs ORDER BY timestamp DESC")
-            rows = cursor.fetchall()
-
-            reports = []
-            for row in rows:
-                traffic_log_id = row[6]  # traffic_log_id từ AttackLogs
-                
-                # Truy vấn bảng TrafficLogs để lấy bandwidth_kbps
-                cursor.execute("SELECT bandwidth_kbps FROM TrafficLogs WHERE id = ?", (traffic_log_id,))
-                bandwidth_result = cursor.fetchone()
-                bandwidth_kbps = bandwidth_result[0] if bandwidth_result else None
-                
-                report = {
-                    "id": row[0],
-                    "timestamp": row[1],
-                    "source_ip": row[2],
-                    "packet_count": row[3],
-                    "bandwidth_kbps": bandwidth_kbps,
-                    "attack_type": row[4],
-                    "level": row[5],
-                    "traffic_log_id": traffic_log_id
-                }
-                reports.append(report)
-
-            conn.close()
-
-            # Gửi danh sách báo cáo về client
-            await websocket.send_json(reports)
-
-            # Delay 5 giây trước lần gửi tiếp theo
-            await asyncio.sleep(8)
-
-    except WebSocketDisconnect:
-        print("⚠️ Client đã ngắt kết nối WebSocket.")
-    except Exception as e:
-        print(f"❌ Lỗi khi xử lý WebSocket: {e}")
-"""
-
+threshold = 70
+active_connections = []
 
 @app.websocket("/ws/traffic")
 async def websocket_traffic(websocket: WebSocket):
     await websocket.accept()
     active_connections.append(websocket)
-    print(f"Client connected: {websocket.client}")
+    print(f"✅ Client connected: {websocket.client}")
+
     try:
         while True:
-            data = await websocket.receive_json()
+            try:
+                message = await websocket.receive_text()
 
-            # In dữ liệu nhận được (dạng dict)
-            #print(f"Received from sender: {data}")
+                if message.strip().lower() == "ping":
+                    await websocket.send_text("pong")
+                    continue
 
-            # Lưu vào database
-            conn = sqlite3.connect("network_monitoring.db")
-            cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO TrafficLogs (timestamp, source_ip, destination_ip, packet_count, bandwidth_kbps)
-                VALUES (?, ?, ?, ?, ?)
-            """, (
-                data.get("timestamp"),
-                data.get("source_ip"),
-                data.get("destination_ip"),
-                data.get("packet_count"),
-                data.get("bandwidth_kbps")
-            ))
-            traffic_log_id = cursor.lastrowid  # Lấy ID sau khi chèn
-
-            # Nếu bandwidth > 40 thì ghi thêm vào AttackLogs
-            bandwidth = data.get("bandwidth_kbps", 0)
-
-            level = None
-            if bandwidth > 75:
-                level = "High"
-            elif bandwidth > 73:
-                level = "Medium"
-            elif bandwidth > threshold:
-                level = "Low"
-
-            if level:   
-                cursor.execute("""
-                INSERT INTO AttackLogs (
-                    timestamp, source_ip, packet_count,
-                    attack_type, level, traffic_log_id
-                )
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, (
-                data.get("timestamp"),
-                data.get("source_ip"),
-                data.get("packet_count"),
-                "DDoS",
-                level,
-                traffic_log_id
-                ))
-
-            if level:   
-                attack_timestamp = data.get("timestamp")
-                attack_type = "DDoS"  # hoặc lấy từ data nếu có
-
-                # Truy vấn để lấy attack_log_id
-                cursor.execute("""
-                SELECT id FROM AttackLogs
-                WHERE timestamp = ? AND attack_type = ?
-                ORDER BY id DESC LIMIT 1
-                """, (attack_timestamp, attack_type))
-
-                result = cursor.fetchone()
-                if result:
-                    attack_log_id = result[0]
-                cursor.execute("""
-                INSERT INTO Reports (
-                    timestamp, attack_log_id, admin_id,
-                    trafic_data, attack_type, level
-                )
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, (
-                data.get("timestamp"),
-                attack_log_id,
-                "1",
-                "Luu luong tang bat thuong",
-                "DDoS",
-                level,
-                ))
-
-            if level:
-                cursor.execute("""
-                INSERT INTO Alerts (
-                    attack_log_id, admin_id, timestamp, alert_message,
-                    alert_type, level
-                )
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, (
-                traffic_log_id,
-                "1",
-                data.get("timestamp"),
-                "Luu luong tang bat thuong",
-                "DDoS",
-                level
-                ))
-            
-            conn.commit()
-            conn.close()
-
-            # Gửi dữ liệu này cho tất cả client
-            disconnected_clients = []
-            for client in active_connections:
+                # Nếu message là JSON → xử lý bình thường
                 try:
-                    await client.send_json(data)
-                except WebSocketDisconnect:
-                    disconnected_clients.append(client)
-                except Exception as e:
-                    print(f"Error sending to client: {e}")
-                    disconnected_clients.append(client)
+                    data = json.loads(message)
+                except json.JSONDecodeError:
+                    print(f"❌ Dữ liệu không hợp lệ từ client: {message}")
+                    continue
 
-            # Loại bỏ client đã ngắt kết nối
-            for dc in disconnected_clients:
-                active_connections.remove(dc)
+                source_ip = data.get("source_ip")
+                if isinstance(source_ip, list):
+                    source_ip = ",".join(source_ip)
+                bandwidth = data.get("bandwidth_kbps", 0)
+                if bandwidth > threshold:
+                # Lưu vào database
+                    conn = sqlite3.connect("network_monitoring.db")
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        INSERT INTO TrafficLogs (timestamp, source_ip, destination_ip, packet_count, bandwidth_kbps)
+                        VALUES (?, ?, ?, ?, ?)
+                    """, (
+                        data.get("timestamp"),
+                        source_ip,
+                        data.get("destination_ip"),
+                        data.get("packet_count"),
+                        data.get("bandwidth_kbps")
+                    ))
+                    traffic_log_id = cursor.lastrowid
 
-    except WebSocketDisconnect:
-        print("WebSocket disconnected.")
-        active_connections.remove(websocket)
+                    # Phân loại attack
+                    level = None
+                    if bandwidth > 75:
+                        level = "High"
+                    elif bandwidth > 73:
+                        level = "Medium"
+                    elif bandwidth > threshold:
+                        level = "Low"
+
+                    if level:
+                        cursor.execute("""
+                            INSERT INTO AttackLogs (
+                                timestamp, source_ip, packet_count,
+                                attack_type, level, traffic_log_id
+                            )
+                            VALUES (?, ?, ?, ?, ?, ?)
+                        """, (
+                            data.get("timestamp"),
+                            source_ip,
+                            data.get("packet_count"),
+                            data.get("attack_type"),
+                            level,
+                            traffic_log_id
+                        ))
+
+                        # Lấy attack_log_id
+                        cursor.execute("""
+                            SELECT id FROM AttackLogs
+                            WHERE timestamp = ? AND attack_type = ?
+                            ORDER BY id DESC LIMIT 1
+                        """, (data.get("timestamp"), data.get("attack_type")))
+                        result = cursor.fetchone()
+                        attack_log_id = result[0] if result else None
+
+                        # Ghi vào báo cáo
+                        cursor.execute("""
+                            INSERT INTO Reports (
+                                timestamp, attack_log_id, admin_id,
+                                trafic_data, attack_type, level
+                            )
+                            VALUES (?, ?, ?, ?, ?, ?)
+                        """, (
+                            data.get("timestamp"),
+                            attack_log_id,
+                            "1",
+                            "Lưu lượng tăng bất thường",
+                            data.get("attack_type"),
+                            level,
+                        ))
+
+                        # Cảnh báo
+                        cursor.execute("""
+                            INSERT INTO Alerts (
+                                attack_log_id, admin_id, timestamp, alert_message,
+                                alert_type, level
+                            )
+                            VALUES (?, ?, ?, ?, ?, ?)
+                        """, (
+                            traffic_log_id,
+                            "1",
+                            data.get("timestamp"),
+                            "Lưu lượng tăng bất thường",
+                            data.get("attack_type"),
+                            level
+                        ))
+
+                    conn.commit()
+                    conn.close()
+
+                # Gửi broadcast đến tất cả client còn kết nối
+                disconnected_clients = []
+                for client in active_connections:
+                    try:
+                        await client.send_json(data)
+                    except:
+                        disconnected_clients.append(client)
+
+                for dc in disconnected_clients:
+                    if dc in active_connections:
+                        active_connections.remove(dc)
+
+            except WebSocketDisconnect:
+                break
+
+    finally:
+        if websocket in active_connections:
+            active_connections.remove(websocket)
+            print(f"❌ Client disconnected: {websocket.client}")
+
 
 
 
@@ -1031,15 +929,6 @@ def create_tables():
     conn.close()
 
 create_tables()
-
-from fastapi import WebSocket, WebSocketDisconnect
-import sqlite3
-import asyncio
-
-from fastapi import WebSocket, WebSocketDisconnect
-import sqlite3
-import asyncio
-from fastapi import HTTPException
 
 
 

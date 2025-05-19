@@ -109,7 +109,120 @@
             </table>
         </div>
     </div>
-    <script>
+    
+    <!-- Thêm jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+    const socket = new WebSocket("ws://127.0.0.1:8000/ws/traffic");
+
+    socket.onopen = () => {
+        console.log("Connected to WebSocket");
+    };
+
+    socket.onmessage = function(event) {
+        console.log("Dữ liệu nhận từ server:", event.data);
+
+        try {
+            let data = JSON.parse(event.data);
+            console.log("Dữ liệu sau khi parse:", data);
+
+            const timestamp = data.timestamp;
+            const bandwidth = data.bandwidth_kbps;
+
+            labels.push(timestamp);
+            dataPoints.push(bandwidth);
+
+            if (labels.length > 10) labels.shift();
+            if (dataPoints.length > 10) dataPoints.shift();
+
+            trafficChart.update();
+
+            allTrafficData.push(data);
+            if (ipFilter === "") {
+                updateTable(allTrafficData, true);
+            } else {
+                const filtered = allTrafficData.filter(item => item.source_ip.includes(ipFilter));
+                updateTable(filtered, false);
+            }
+        } catch (e) {
+            console.warn("Lỗi khi xử lý dữ liệu từ WebSocket:", e);
+            console.log("Dữ liệu nhận được:", event.data);
+        }
+    };
+
+    socket.onerror = function(error) {
+        console.log("WebSocket error:", error);
+    };
+
+    let labels = [];
+    let dataPoints = [];
+    let allTrafficData = [];
+    let ipFilter = "";
+
+    const ctx1 = document.getElementById('trafficChart').getContext('2d');
+    const trafficChart = new Chart(ctx1, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Lưu lượng mạng (Kbps)',
+                data: dataPoints,
+                borderColor: 'blue',
+                backgroundColor: 'rgba(0, 0, 255, 0.1)',
+                fill: true
+            }]
+        },
+        options: {
+            animation: false,
+            scales: {
+                x: { title: { display: true, text: 'Thời gian' } },
+                y: { title: { display: true, text: 'Kbps' }, suggestedMin: 0, suggestedMax: 100 }
+            }
+        }
+    });
+
+    function updateTable(data, limit = true) {
+        const $tableBody = $('#suspiciousIpTable');
+        $tableBody.empty();
+
+        let filteredData = data.filter(item => item.bandwidth_kbps > 50);
+
+        if (limit) {
+            filteredData = filteredData
+                .sort((a, b) => b.bandwidth_kbps - a.bandwidth_kbps)
+                .slice(0, 10);
+        }
+
+        filteredData.forEach(item => {
+            const row = `
+                <tr>
+                    <td>${item.timestamp}</td>
+                    <td>${item.source_ip}</td>
+                    <td>${item.packet_count}</td>
+                    <td>${item.bandwidth_kbps}</td>
+                </tr>`;
+            $tableBody.append(row);
+        });
+    }
+
+    // Dùng jQuery để xử lý sự kiện
+    $('#searchIp').on('input', function() {
+        ipFilter = $(this).val().trim();
+        if (ipFilter === "") {
+            updateTable(allTrafficData, true);
+        } else {
+            const filtered = allTrafficData.filter(item => item.source_ip.includes(ipFilter));
+            updateTable(filtered, false);
+        }
+    });
+
+    $('#logoutButton').on('click', function() {
+        window.location.href = "login.html";
+    });
+</script>
+
+    <!--<script>
         const socket = new WebSocket("ws://127.0.0.1:8000/ws/traffic");
     
         socket.onopen = () => {
@@ -168,7 +281,7 @@
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Lưu lượng mạng (Mbps)',
+                    label: 'Lưu lượng mạng (Kbps)',
                     data: dataPoints,
                     borderColor: 'blue',
                     backgroundColor: 'rgba(0, 0, 255, 0.1)',
@@ -179,7 +292,7 @@
                 animation: false,
                 scales: {
                     x: { title: { display: true, text: 'Thời gian' } },
-                    y: { title: { display: true, text: 'Mbps' }, suggestedMin: 0, suggestedMax: 100 }
+                    y: { title: { display: true, text: 'Kbps' }, suggestedMin: 0, suggestedMax: 100 }
                 }
             }
         });
@@ -189,7 +302,7 @@
     tableBody.innerHTML = '';
 
     // Lọc các IP có bandwidth > 70
-    let filteredData = data.filter(item => item.bandwidth_kbps > 70);
+    let filteredData = data.filter(item => item.bandwidth_kbps > 50);
 
     if (limit) {
         filteredData = filteredData
@@ -227,7 +340,7 @@
         document.getElementById("logoutButton").addEventListener("click", function() {
             window.location.href = "login.html";
         });
-    </script>
+    </script>-->
     
 </body>
 </html>

@@ -146,7 +146,7 @@
         </div>
     </div>
     <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
-
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         let allReports = [];
 let filteredReports = [];
@@ -334,63 +334,6 @@ function renderChart(data) {
     Plotly.react("reportChart", [trace], layout);
 }
 
-/*function renderChart(data) {
-    const ctx = document.getElementById("reportChart").getContext("2d");
-
-    // Tạo mảng 12 tháng ban đầu với giá trị 0
-    const monthlyAttackCounts = Array(12).fill(0);
-
-    // Duyệt qua dữ liệu để cộng dồn số cuộc tấn công theo tháng
-    data.forEach(report => {
-        const date = new Date(report.timestamp);
-        const month = date.getMonth(); // 0 = Jan, 1 = Feb, ..., 11 = Dec
-        monthlyAttackCounts[month] += 1; // Đếm số cuộc tấn công
-    });
-
-    const labels = [
-        "Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6",
-        "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"
-    ];
-
-    // Hủy biểu đồ cũ nếu tồn tại
-    if (window.reportChart instanceof Chart) {
-        window.reportChart.destroy();
-    }
-
-    // Tạo biểu đồ cột mới
-    window.reportChart = new Chart(ctx, {
-        type: "bar",
-        data: {
-            labels: labels,
-            datasets: [{
-                label: "Số lượng tấn công",
-                data: monthlyAttackCounts,
-                backgroundColor: "rgba(54, 162, 235, 0.6)", // xanh dương nhạt
-                borderColor: "rgba(54, 162, 235, 1)",       // xanh dương đậm
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    title: {
-                        display: true,
-                        text: "Số cuộc tấn công"
-                    }
-                },
-                x: {
-                    title: {
-                        display: true,
-                        text: "Tháng"
-                    }
-                }
-            }
-        }
-    });
-}*/
-
 function downloadAttackReportCSV() {
     const table = document.querySelector("table");
     if (!table) {
@@ -430,128 +373,9 @@ function downloadAttackReportCSV() {
     link.click();
     document.body.removeChild(link);
 }
-document.getElementById("logoutButton").addEventListener("click", function() {
+    $('#logoutButton').on('click', function() {
         window.location.href = "login.html";
     });
     </script>
-    
-    <!--<script>
-        let allReports = [];
-    
-        async function fetchReports() {
-            try {
-                const response = await fetch("/api/reports");
-                const data = await response.json();
-                console.log(data);
-                // ✅ Đảm bảo data là mảng
-                if (!Array.isArray(data)) {
-                    throw new Error("Dữ liệu không phải dạng mảng.");
-                }
-    
-                allReports = data;
-                renderTable(allReports);
-                renderChart(allReports);
-            } catch (error) {
-                console.error("Lỗi khi tải dữ liệu báo cáo:", error);
-            }
-        }
-    
-        function renderTable(data) {
-            const table = document.getElementById("reportTable");
-            table.innerHTML = `
-                <tr>
-                    <th>Ngày giờ</th>
-                    <th>Loại tấn công</th>
-                    <th>IP nguồn</th>
-                    <th>Mức độ nghiêm trọng</th>
-                    <th>Tổng số gói tin</th>
-                    <th>Băng thông (MB)</th>
-                    <th>Hành động</th>
-                </tr>
-            `;
-    
-            data.forEach(report => {
-                const row = document.createElement("tr");
-                row.innerHTML = `
-                    <td>${report.timestamp}</td>
-                    <td>${report.attack_type}</td>
-                    <td>${report.source_ip}</td>
-                    <td>${report.level}</td>
-                    <td>${report.packet_count}</td>
-                    <td>${report.bandwidth_kbps}</td>
-                    <td><button onclick="alert('Chi tiết chưa khả dụng')">Xem</button></td>
-                `;
-                table.appendChild(row);
-            });
-        }
-    
-        function applyFilter() {
-            const fromDate = document.getElementById("fromDate").value;
-            const toDate = document.getElementById("toDate").value;
-            const severity = document.getElementById("severityFilter").value;
-    
-            let filtered = allReports;
-    
-            if (fromDate) {
-                filtered = filtered.filter(r => new Date(r.timestamp) >= new Date(fromDate));
-            }
-            if (toDate) {
-                filtered = filtered.filter(r => new Date(r.timestamp) <= new Date(toDate));
-            }
-            if (severity) {
-                filtered = filtered.filter(r => r.severity === severity);
-            }
-    
-            renderTable(filtered);
-            renderChart(filtered);
-        }
-    
-        function downloadCSV() {
-            let csv = "Ngày giờ,Loại tấn công,IP nguồn,Mức độ nghiêm trọng,Tổng số gói tin,Băng thông (MB)\n";
-            allReports.forEach(r => {
-                csv += `${r.timestamp},${r.attack_type},${r.source_ip},${r.level},${r.packet_count},${r.bandwidth_kbps}\n`;
-            });
-    
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = "reports.csv";
-            a.click();
-        }
-    
-        function renderChart(data) {
-            const ctx = document.getElementById("reportChart").getContext("2d");
-            const labels = data.map(r => r.timestamp);
-            const packetCounts = data.map(r => r.packet_count);
-    
-            // ✅ Kiểm tra nếu biểu đồ cũ tồn tại và có hàm destroy thì mới gọi
-            if (window.reportChart && typeof window.reportChart.destroy === "function") {
-                window.reportChart.destroy();
-            }
-    
-            window.reportChart = new Chart(ctx, {
-                type: "line",
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: "Tổng số gói tin",
-                        data: packetCounts,
-                        borderColor: "rgba(75, 192, 192, 1)",
-                        borderWidth: 2,
-                        fill: false
-                    }]
-                },
-                options: {
-                    responsive: true
-                }
-            });
-        }
-    
-        fetchReports();
-    </script>-->
-    
-
-    
 </body>
 </html>

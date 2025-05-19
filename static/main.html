@@ -49,6 +49,7 @@
             <canvas id="alertChart"></canvas>
         </div>
     </div>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         let allReports = [];
         let alertData = [];
@@ -174,7 +175,7 @@
                 }
             }
         });
-        document.getElementById("logoutButton").addEventListener("click", function() {
+        $('#logoutButton').on('click', function() {
             window.location.href = "login.html";
         });
         // Gọi các kết nối WebSocket

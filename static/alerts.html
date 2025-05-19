@@ -69,6 +69,7 @@
             </tbody>
         </table>
     </div>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         // Tạo kết nối WebSocket
         const socket = new WebSocket("ws://localhost:8000/ws/alerts");  // Đảm bảo URL này đúng với endpoint của WebSocket trên server
@@ -77,30 +78,45 @@
         let alertData = [];
     
         // Lắng nghe thông báo từ WebSocket
-        socket.onmessage = async function(event) {
-            const data = JSON.parse(event.data);
-            console.log(data);
-            
-            alertData = data;  // Cập nhật dữ liệu cảnh báo từ server
-            renderAlerts();  // Gọi lại hàm render để hiển thị dữ liệu mới
-            for (const alert of data) {
-        try {
-            const response = await fetch("/send-alert-email", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(alert)
-            });
+        let sentAlertIds = new Set();
 
-            const result = await response.json();
-            console.log("Email sent result:", result);
+socket.onmessage = function(event) {
+    const data = JSON.parse(event.data);
+    console.log(data);
 
-        } catch (error) {
-            console.error("Lỗi khi gửi dữ liệu về API gửi email:", error);
-        }
+    alertData = data;
+    renderAlerts();
+
+    sendEmailForNewAlerts(data); // Tách riêng xử lý
+};
+function sendEmailForNewAlerts(data) {
+    const newAlerts = data.filter(alert => !sentAlertIds.has(alert.id));
+
+    if (newAlerts.length > 0) {
+        newAlerts.forEach(alert => sentAlertIds.add(alert.id));
+
+        // ✅ Gửi email ngầm, không chặn luồng chính
+        fetch("/send-alert-email", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                alerts: newAlerts,
+                admin_email: "quangloanthanhchien4@gmail.com",
+                admin_name: "Admin"
+            })
+        })
+        .then(response => response.json())
+        .then(result => {
+            console.log("✅ Gửi email thành công:", result);
+        })
+        .catch(error => {
+            console.error("❌ Lỗi khi gửi email:", error);
+        });
     }
-        };
+}
+
     
         // Xử lý sự kiện khi WebSocket bị đóng
         socket.onclose = function() {
@@ -111,6 +127,7 @@
         socket.onerror = function(error) {
             console.error("WebSocket error:", error);
         };
+
     
         function capitalize(text) {
             return text.charAt(0).toUpperCase() + text.slice(1);
@@ -154,18 +171,24 @@
     
     
         async function deleteAlert(id) {
-            try {
-                const confirmDelete = confirm("Bạn có chắc muốn xoá cảnh báo này?");
-                if (!confirmDelete) return;
-    
-                await fetch(`/api/alerts/${id}`, { method: 'DELETE' });
-                alert("Xoá cảnh báo thành công!");
-                renderAlerts();
-            } catch (error) {
-                console.error("Lỗi khi xoá cảnh báo:", error);
-                alert("Không thể xoá cảnh báo. Vui lòng thử lại.");
-            }
-        }
+    try {
+        const confirmDelete = confirm("Bạn có chắc muốn xoá cảnh báo này?");
+        if (!confirmDelete) return;
+
+        const response = await fetch(`/api/alerts/${id}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error("Lỗi khi xoá cảnh báo");
+
+        // ✅ Xoá alert khỏi mảng dữ liệu
+        alertData = alertData.filter(alert => alert.id !== id);
+
+        alert("Xoá cảnh báo thành công!");
+        renderAlerts();
+    } catch (error) {
+        console.error("❌ Lỗi khi xoá cảnh báo:", error);
+        alert("Không thể xoá cảnh báo. Vui lòng thử lại.");
+    }
+}
+
         function exportReport() {
     const tableBody = document.querySelector("#alertTable tbody");
     const rows = tableBody.querySelectorAll("tr");
@@ -203,7 +226,7 @@
     
         // Tải lần đầu
         window.addEventListener("load", renderAlerts);
-        document.getElementById("logoutButton").addEventListener("click", function() {
+        $('#logoutButton').on('click', function() {
             window.location.href = "login.html";
         });
     </script>
