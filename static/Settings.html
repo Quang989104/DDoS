@@ -194,23 +194,23 @@
         };
 
         ws.onmessage = function(event) {
-        try {
-            const data = JSON.parse(event.data);
+            try {
+                const data = JSON.parse(event.data);
 
-            if (Array.isArray(data)) {
-                allAdmins = data;
+                if (Array.isArray(data)) {
+                    allAdmins = data;
+                }
+                document.querySelector("#tab1").innerHTML = `
+                    <h2>Thông tin</h2>
+                    <p><strong>Tên đăng nhập:</strong> ${data[0].username}</p>
+                    <p><strong>Pass:</strong> ${"*".repeat(data[0].password.length)}</p>
+                    <p><strong>Email:</strong> ${data[0].email}</p>
+                `;
             }
-            document.querySelector("#tab1").innerHTML = `
-                <h2>Thông tin</h2>
-                <p><strong>Tên đăng nhập:</strong> ${data[0].username}</p>
-                <p><strong>Pass:</strong> ${"*".repeat(data[0].password.length)}</p>
-                <p><strong>Email:</strong> ${data[0].email}</p>
-            `;
-        }
             catch (error) {
-            console.error("Lỗi khi xử lý dữ liệu từ WebSocket:", error);
-        }
-    };
+                console.error("Lỗi khi xử lý dữ liệu từ WebSocket:", error);
+            }
+        };
     
         ws.onerror = function(error) {
             console.error("WebSocket error:", error);
@@ -231,148 +231,148 @@
             window.location.href = "login.html";
         });
         document.querySelector(".passChange").addEventListener("click", async function() {
-    const currentPassword = document.getElementById("current-password");
-    const newPassword = document.getElementById("new-password");
-    const confirmPassword = document.getElementById("confirm-password");
+            const currentPassword = document.getElementById("current-password");
+            const newPassword = document.getElementById("new-password");
+            const confirmPassword = document.getElementById("confirm-password");
 
-    if (newPassword.value !== confirmPassword.value) {
-        alert("Mật khẩu mới và xác nhận mật khẩu không khớp!");
-        return;
-    }
+            if (newPassword.value !== confirmPassword.value) {
+                alert("Mật khẩu mới và xác nhận mật khẩu không khớp!");
+                return;
+            }
 
-    const adminId = allAdmins[0].id; // Lấy ID admin từ dữ liệu đã lưu hoặc WebSocket
+            const adminId = allAdmins[0].id;
+            try {
+                const response = await fetch("/change-password", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        admin_id: adminId,
+                        old_password: currentPassword.value,
+                        new_password: newPassword.value,
+                    }),
+                });
 
-    // Gửi yêu cầu đổi mật khẩu
-    try {
-        const response = await fetch("/change-password", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                admin_id: adminId,
-                old_password: currentPassword.value,
-                new_password: newPassword.value,
-            }),
+                const result = await response.json();
+
+                if (response.ok) {
+                    currentPassword.value = "";
+                    newPassword.value = "";
+                    confirmPassword.value = "";
+                    alert(result.message);
+                } else {
+                    alert(result.detail);
+                }
+            } catch (error) {
+                console.error("Lỗi khi gọi API:", error);
+                alert("Đã có lỗi xảy ra khi thay đổi mật khẩu.");
+            }
         });
 
-        const result = await response.json();
+        document.querySelector(".usernameChange").addEventListener("click", async function () {
+            const nameInput = document.getElementById("new-username");
+            if (!nameInput.value || nameInput.value.includes(" ")) {
+                alert("Tên không được chứa khoảng trắng!");
+                return;
+            }   
+            const adminId = allAdmins[0].id;
+            try {
+                const response = await fetch("/change-name", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        admin_id: adminId,
+                        new_name: nameInput.value,
+                    }),
+                });
 
-        if (response.ok) {
-            currentPassword.value = "";
-            newPassword.value = "";
-            confirmPassword.value = "";
-            alert(result.message);
-        } else {
-            alert(result.detail);
-        }
-    } catch (error) {
-        console.error("Lỗi khi gọi API:", error);
-        alert("Đã có lỗi xảy ra khi thay đổi mật khẩu.");
-    }
-});
+                const result = await response.json();
 
-document.querySelector(".usernameChange").addEventListener("click", async function () {
-    const nameInput = document.getElementById("new-username"); // Input chứa tên mới
-
-    const adminId = allAdmins[0].id; // Lấy ID admin từ dữ liệu đã lưu
-
-    try {
-        const response = await fetch("/change-name", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                admin_id: adminId,
-                new_name: nameInput.value,
-            }),
+                if (response.ok) {
+                    nameInput.value = "";
+                    alert(result.message);
+                } else {
+                    alert(result.detail);
+                }
+            } catch (error) {
+                console.error("Lỗi khi gọi API:", error);
+                alert("Đã có lỗi xảy ra khi thay đổi tên.");
+            }
         });
 
-        const result = await response.json();
 
-        if (response.ok) {
-            nameInput.value = "";
-            alert(result.message);
-        } else {
-            alert(result.detail);
-        }
-    } catch (error) {
-        console.error("Lỗi khi gọi API:", error);
-        alert("Đã có lỗi xảy ra khi thay đổi tên.");
-    }
-});
+        document.querySelector(".emailChange").addEventListener("click", async function () {
+            const emailInput = document.getElementById("new-email");
+            const newEmail = emailInput.value.trim();
 
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(newEmail)) {
+                alert("Email không hợp lệ. Vui lòng nhập đúng định dạng!");
+                return;
+            }
 
-document.querySelector(".emailChange").addEventListener("click", async function () {
-    const emailInput = document.getElementById("new-email");
-    const newEmail = emailInput.value.trim();
+            const adminId = allAdmins[0].id; 
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(newEmail)) {
-        alert("Email không hợp lệ. Vui lòng nhập đúng định dạng!");
-        return;
-    }
+            try {
+                const response = await fetch("/change-email", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        admin_id: adminId,
+                        new_email: newEmail,
+                    }),
+                });
 
-    const adminId = allAdmins[0].id; // Lấy ID admin từ dữ liệu lưu
+                const result = await response.json();
 
-    try {
-        const response = await fetch("/change-email", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                admin_id: adminId,
-                new_email: newEmail,
-            }),
+                if (response.ok) {
+                    emailInput.value = "";
+                    alert(result.message);
+                } else {
+                    alert(result.detail);
+                }
+            } catch (error) {
+                console.error("Lỗi khi gọi API:", error);
+                alert("Đã có lỗi xảy ra khi thay đổi email.");
+            }
         });
 
-        const result = await response.json();
+        document.querySelector(".thresholdChange").addEventListener("click", async function () {
+            const thresholdInput = document.getElementById("threshold");
+            const thresholdValue = parseFloat(thresholdInput.value);
 
-        if (response.ok) {
-            emailInput.value = "";
-            alert(result.message);
-        } else {
-            alert(result.detail);
-        }
-    } catch (error) {
-        console.error("Lỗi khi gọi API:", error);
-        alert("Đã có lỗi xảy ra khi thay đổi email.");
-    }
-});
+            if (isNaN(thresholdValue) || thresholdValue < 0) {
+                alert("Vui lòng nhập giá trị threshold hợp lệ (số dương)");
+                return;
+            }
 
-document.querySelector(".thresholdChange").addEventListener("click", async function () {
-    const thresholdInput = document.getElementById("threshold");
-    const thresholdValue = parseFloat(thresholdInput.value);
+            try {
+                const response = await fetch("http://127.0.0.1:8000/change-threshold", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ value: thresholdValue })
+                });
 
-    if (isNaN(thresholdValue) || thresholdValue < 0) {
-        alert("Vui lòng nhập giá trị threshold hợp lệ (số dương)");
-        return;
-    }
+                const result = await response.json();
 
-    try {
-        const response = await fetch("http://127.0.0.1:8000/change-threshold", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ value: thresholdValue })
+                if (response.ok) {
+                    thresholdInput.value = "";
+                    alert(result.message);
+                } else {
+                    alert("Lỗi: " + result.detail);
+                }
+            } catch (error) {
+                console.error("Lỗi khi gọi API:", error);
+                alert("Không thể kết nối đến server.");
+            }
         });
-
-        const result = await response.json();
-
-        if (response.ok) {
-            thresholdInput.value = "";
-            alert(result.message);
-        } else {
-            alert("Lỗi: " + result.detail);
-        }
-    } catch (error) {
-        console.error("Lỗi khi gọi API:", error);
-        alert("Không thể kết nối đến server.");
-    }
-});
 
     </script>
     

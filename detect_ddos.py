@@ -6,12 +6,9 @@ from collections import defaultdict
 from websocket import WebSocketApp
 from datetime import datetime
 
-
-
-
 WS_SERVER = "ws://127.0.0.1:8000/ws/traffic"
 ws_app = None
-is_open = False  # Biến trạng thái kết nối
+is_open = False 
 
 def capture_traffic(duration=1):
     stats = defaultdict(lambda: [0, 0])
@@ -42,12 +39,11 @@ def analyze_attack_type(stats):
 def send_traffic_data(ws, stats, duration=1):
     global is_open
     if not is_open:
-        print("⚠️ Kết nối chưa mở, không gửi dữ liệu")
+        print(" Kết nối chưa mở, không gửi dữ liệu")
         return
 
     attack_info = analyze_attack_type(stats)
     
-    #timestamp = time.strftime("%Y-%m-%d %H:%M:%S") 
 
     for dst_ip, info in attack_info.items():
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
@@ -65,14 +61,9 @@ def send_traffic_data(ws, stats, duration=1):
         }
         try:
             ws.send(json.dumps(data))
-            print(f"✅ Gửi dữ liệu: {json.dumps(data, indent=2)}")
+            print(f" Gửi dữ liệu: {json.dumps(data, indent=2)}")
         except Exception as e:
-            print(f"❌ Lỗi gửi dữ liệu: {e}")
-
-"""def traffic_loop(ws):
-    while True:
-        stats = capture_traffic(duration=1)
-        send_traffic_data(ws, stats, duration=1)"""
+            print(f" Lỗi gửi dữ liệu: {e}")
 def traffic_loop(ws):
     while True:
         start_time = time.time()
@@ -86,30 +77,30 @@ def traffic_loop(ws):
 def on_open(ws):
     global is_open
     is_open = True
-    print("✅ WebSocket đã mở kết nối")
+    print(" WebSocket đã mở kết nối")
     threading.Thread(target=traffic_loop, args=(ws,), daemon=True).start()
 
 def on_close(ws, close_status_code, close_msg):
     global is_open
     is_open = False
-    print(f"⚠️ WebSocket đóng kết nối: {close_status_code} - {close_msg}")
+    print(f" WebSocket đóng kết nối: {close_status_code} - {close_msg}")
 
 def on_error(ws, error):
     global is_open
     is_open = False
-    print(f"❌ WebSocket lỗi: {error}")
+    print(f" WebSocket lỗi: {error}")
 
 def on_pong(ws, message):
-    print("📶 Nhận pong từ server")
+    print(" Nhận pong từ server")
 
 def keep_alive(ws):
     global is_open
     while is_open:
         try:
-            ws.send("ping")  # tùy server, có thể dùng ws.ping() nếu server hỗ trợ
+            ws.send("ping")
         except:
             break
-        time.sleep(10)  # gửi ping mỗi 10 giây
+        time.sleep(10) 
 
 def start_ws():
     global ws_app
@@ -126,7 +117,7 @@ def start_ws():
             ping_thread.start()
             ws_app.run_forever(ping_interval=20, ping_timeout=5)
         except Exception as e:
-            print(f"❌ Lỗi WebSocketApp: {e} → Thử lại sau 3 giây")
+            print(f" Lỗi WebSocketApp: {e} → Thử lại sau 3 giây")
             time.sleep(3)
 
 if __name__ == "__main__":

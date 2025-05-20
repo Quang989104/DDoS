@@ -95,6 +95,7 @@
         button:hover {
             background-color: #0056b3;
         }
+        td.ip-cell {white-space: normal;word-break: break-word;max-width: 150px;}
     </style>
 </head>
 <body>
@@ -150,7 +151,7 @@
     <script>
         let allReports = [];
 let filteredReports = [];
-let isFiltering = false;  // Cờ kiểm tra đang lọc hay không
+let isFiltering = false; 
 
 function connectWebSocket() {
     const socket = new WebSocket("ws://localhost:8000/ws/reports");
@@ -167,7 +168,6 @@ function connectWebSocket() {
             if (Array.isArray(data)) {
                 allReports = data;
 
-                // Nếu không đang lọc thì mới cập nhật hiển thị
                 if (!isFiltering) {
                     renderTable(allReports);
                     renderChart(allReports);
@@ -241,7 +241,7 @@ function renderTable(data) {
         row.innerHTML = `
             <td>${report.timestamp}</td>
             <td>${report.attack_type}</td>
-            <td>${report.source_ip}</td>
+            <td class="cell-ip">${report.source_ip}</td>
             <td>${report.level}</td>
             <td>${report.packet_count}</td>
             <td>${report.bandwidth_kbps}</td>
@@ -250,129 +250,121 @@ function renderTable(data) {
         table.appendChild(row);
     });
 }
-
-
-
-function downloadCSV() {
-    if (!allReports || !Array.isArray(allReports)) {
-        alert("Dữ liệu chưa sẵn sàng để xuất báo cáo.");
-        return;
-    }
-
-    const filtered = applyFilter();
-
-    let csv = "Ngày giờ,Loại tấn công,IP nguồn,Mức độ nghiêm trọng,Tổng số gói tin,Băng thông (MB)\n";
-    filtered.forEach(r => {
-        csv += `${r.timestamp},${r.attack_type},${r.source_ip},${r.level},${r.packet_count},${r.bandwidth_kbps}\n`;
-    });
-
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = "reports_filtered.csv";
-    a.click();
-}
-
-function downloadRowCSV(index) {
-    const r = allReports[index];
-
-    let csv = "Ngày giờ,Loại tấn công,IP nguồn,Mức độ nghiêm trọng,Tổng số gói tin,Băng thông (MB)\n";
-    csv += `${r.timestamp},${r.attack_type},${r.source_ip},${r.level},${r.packet_count},${r.bandwidth_kbps}\n`;
-
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-
-    // Tên file theo timestamp hoặc IP nguồn để dễ phân biệt
-    const filename = `report_${r.source_ip.replace(/\./g, '_')}_${Date.now()}.csv`;
-    a.download = filename;
-
-    a.click();
-}
-
-function renderChart(data) {
-    // Tạo mảng 12 tháng ban đầu với giá trị 0
-    const monthlyAttackCounts = Array(12).fill(0);
-
-    // Duyệt qua dữ liệu để cộng dồn số cuộc tấn công theo tháng
-    data.forEach(report => {
-        const date = new Date(report.timestamp);
-        const month = date.getMonth(); // 0 = Jan, 1 = Feb, ..., 11 = Dec
-        monthlyAttackCounts[month] += 1; // Đếm số cuộc tấn công
-    });
-
-    const labels = [
-        "Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6",
-        "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"
-    ];
-
-    const trace = {
-        x: labels,
-        y: monthlyAttackCounts,
-        type: "bar",
-        name: "Số lượng tấn công",
-        marker: {
-            color: "rgba(54, 162, 235, 0.6)",
-            line: {
-                color: "rgba(54, 162, 235, 1)",
-                width: 1
-            }
+    function downloadCSV() {
+        if (!allReports || !Array.isArray(allReports)) {
+            alert("Dữ liệu chưa sẵn sàng để xuất báo cáo.");
+            return;
         }
-    };
 
-    const layout = {
-        title: "Biểu đồ số lượng tấn công theo tháng",
-        xaxis: { title: "Tháng" },
-        yaxis: { title: "Số cuộc tấn công", rangemode: "tozero" },
-        margin: { t: 60 },
-        responsive: true
-    };
+        const filtered = applyFilter();
 
-    // Vẽ lại biểu đồ (xoá cũ, tạo mới)
-    Plotly.react("reportChart", [trace], layout);
-}
+        let csv = "Time,Attack_Type,Source_IP,Level,Packet_Count,Bandwidth (Kbps)\n";
+        filtered.forEach(r => {
+            csv += `${r.timestamp},${r.attack_type},${r.source_ip},${r.level},${r.packet_count},${r.bandwidth_kbps}\n`;
+        });
 
-function downloadAttackReportCSV() {
-    const table = document.querySelector("table");
-    if (!table) {
-        alert("Không tìm thấy bảng dữ liệu.");
-        return;
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = "reports_filtered.csv";
+        a.click();
     }
 
-    const headers = Array.from(table.querySelectorAll("thead th"))
+    function downloadRowCSV(index) {
+        const r = allReports[index];
+
+        let csv = "Time,Attack_Type,Source_IP,Level,Packet_Count,Bandwidth (Kbps)\n";
+        csv += `${r.timestamp},${r.attack_type},${r.source_ip},${r.level},${r.packet_count},${r.bandwidth_kbps}\n`;
+
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const filename = `report_${r.source_ip.replace(/\./g, '_')}_${Date.now()}.csv`;
+        a.download = filename;
+
+        a.click();
+    }
+
+    function renderChart(data) {
+        const monthlyAttackCounts = Array(12).fill(0);
+
+        data.forEach(report => {
+            const date = new Date(report.timestamp);
+            const month = date.getMonth(); 
+            monthlyAttackCounts[month] += 1;
+        });
+
+        const labels = [
+            "Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6",
+            "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"
+        ];
+
+        const trace = {
+            x: labels,
+            y: monthlyAttackCounts,
+            type: "bar",
+            name: "Số lượng tấn công",
+            marker: {
+                color: "rgba(54, 162, 235, 0.6)",
+                line: {
+                    color: "rgba(54, 162, 235, 1)",
+                    width: 1
+                }
+            }
+        };
+
+        const layout = {
+            title: "Biểu đồ số lượng tấn công theo tháng",
+            xaxis: { title: "Tháng" },
+            yaxis: { title: "Số cuộc tấn công", rangemode: "tozero" },
+            margin: { t: 60 },
+            responsive: true
+        };
+
+        Plotly.react("reportChart", [trace], layout);
+    }
+
+    function downloadAttackReportCSV() {
+        const table = document.querySelector("table");
+        if (!table) {
+            alert("Không tìm thấy bảng dữ liệu.");
+            return;
+        }
+
+        const headers = Array.from(table.querySelectorAll("thead th"))
         .slice(0, -1) // Bỏ cột "Hành động"
         .map(th => `"${th.innerText.trim()}"`)
         .join(",");
 
-    const rows = Array.from(table.querySelectorAll("tbody tr"));
-    if (rows.length === 0) {
-        alert("Không có dữ liệu để xuất.");
-        return;
-    }
+        const rows = Array.from(table.querySelectorAll("tbody tr"));
+        if (rows.length === 0) {
+            alert("Không có dữ liệu để xuất.");
+            return;
+        }
 
-    const data = rows.map(row => {
-        const cells = Array.from(row.querySelectorAll("td"))
-            .slice(0, -1) // Bỏ cột "Hành động"
+        const data = rows.map(row => {
+            const cells = Array.from(row.querySelectorAll("td"))
+            .slice(0, -1)
             .map(td => `"${td.innerText.trim().replace(/"/g, '""')}"`);
-        return cells.join(",");
-    });
+            return cells.join(",");
+        });
 
-    const csvContent = [headers, ...data].join("\n");
+        const csvContent = [headers, ...data].join("\n");
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
 
-    const date = new Date().toISOString().split("T")[0];
-    link.setAttribute("href", url);
-    link.setAttribute("download", `bao_cao_tan_cong_${date}.csv`);
-    link.style.display = "none";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
+        const date = new Date().toISOString().split("T")[0];
+        link.setAttribute("href", url);
+        link.setAttribute("download", `bao_cao_tan_cong_${date}.csv`);
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
     $('#logoutButton').on('click', function() {
         window.location.href = "login.html";
     });

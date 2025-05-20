@@ -49,7 +49,7 @@
         }
         .main-content { flex: 1; padding: 20px; overflow-y: auto; }
         h1 { text-align: center; margin-bottom: 20px; }
-        .charts { display: flex; justify-content: space-around; }
+        .charts { display: flex; justify-content: space-around; height:70%;}
         
         .table-container { margin-top: 20px; }
         table {
@@ -73,6 +73,7 @@
             border: 1px solid #ccc;
             border-radius: 5px;
         }
+        td.ip-cell {white-space: normal;word-break: break-word;max-width: 150px;}
     </style>
 </head>
 <body>
@@ -110,7 +111,6 @@
         </div>
     </div>
     
-    <!-- Thêm jQuery -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 <script>
@@ -175,6 +175,7 @@
         },
         options: {
             animation: false,
+            maintainAspectRatio: false,
             scales: {
                 x: { title: { display: true, text: 'Thời gian' } },
                 y: { title: { display: true, text: 'Kbps' }, suggestedMin: 0, suggestedMax: 100 }
@@ -198,7 +199,7 @@
             const row = `
                 <tr>
                     <td>${item.timestamp}</td>
-                    <td>${item.source_ip}</td>
+                    <td class="cell-ip">${item.source_ip}</td>
                     <td>${item.packet_count}</td>
                     <td>${item.bandwidth_kbps}</td>
                 </tr>`;
@@ -206,7 +207,6 @@
         });
     }
 
-    // Dùng jQuery để xử lý sự kiện
     $('#searchIp').on('input', function() {
         ipFilter = $(this).val().trim();
         if (ipFilter === "") {
@@ -221,126 +221,6 @@
         window.location.href = "login.html";
     });
 </script>
-
-    <!--<script>
-        const socket = new WebSocket("ws://127.0.0.1:8000/ws/traffic");
-    
-        socket.onopen = () => {
-            console.log("Connected to WebSocket");
-        };
-    
-        socket.onmessage = function(event) {
-            console.log("Dữ liệu nhận từ server:", event.data);
-    
-            try {
-                // Giải mã JSON nhận được từ WebSocket
-                let data = JSON.parse(event.data);
-                console.log("Dữ liệu sau khi parse:", data);
-    
-                // Kiểm tra và lấy giá trị timestamp và bandwidth_kb từ dữ liệu
-                const timestamp = data.timestamp; // Sử dụng timestamp trong dữ liệu
-                const bandwidth = data.bandwidth_kbps; // Dùng bandwidth_kb từ dữ liệu
-    
-                // Thêm thông tin vào biểu đồ
-                labels.push(timestamp);
-                dataPoints.push(bandwidth);
-                
-                // Giới hạn số lượng điểm dữ liệu và nhãn hiển thị trên biểu đồ
-                if (labels.length > 10) labels.shift();
-                if (dataPoints.length > 10) dataPoints.shift();
-                
-                // Cập nhật biểu đồ với dữ liệu mới
-                trafficChart.update();
-    
-                // Cập nhật bảng dữ liệu
-                allTrafficData.push(data); // Lưu lại tất cả dữ liệu vào biến allTrafficData
-                if (ipFilter === "") {
-                    updateTable(allTrafficData, true); // top 10
-                } else {
-                    const filtered = allTrafficData.filter(item => item.source_ip.includes(ipFilter));
-                    updateTable(filtered, false); // tất cả bản ghi khớp
-                }
-            } catch (e) {
-                console.warn("Lỗi khi xử lý dữ liệu từ WebSocket:", e);
-                console.log("Dữ liệu nhận được:", event.data);
-            }
-        };
-    
-        socket.onerror = function(error) {
-            console.log("WebSocket error:", error);
-        };
-    
-        let labels = [];
-        let dataPoints = [];
-        let allTrafficData = [];
-        let ipFilter = ""; // Lưu trạng thái bộ lọc IP
-    
-        const ctx1 = document.getElementById('trafficChart').getContext('2d');
-        const trafficChart = new Chart(ctx1, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Lưu lượng mạng (Kbps)',
-                    data: dataPoints,
-                    borderColor: 'blue',
-                    backgroundColor: 'rgba(0, 0, 255, 0.1)',
-                    fill: true
-                }]
-            },
-            options: {
-                animation: false,
-                scales: {
-                    x: { title: { display: true, text: 'Thời gian' } },
-                    y: { title: { display: true, text: 'Kbps' }, suggestedMin: 0, suggestedMax: 100 }
-                }
-            }
-        });
-    
-        function updateTable(data, limit = true) {
-    const tableBody = document.getElementById('suspiciousIpTable');
-    tableBody.innerHTML = '';
-
-    // Lọc các IP có bandwidth > 70
-    let filteredData = data.filter(item => item.bandwidth_kbps > 50);
-
-    if (limit) {
-        filteredData = filteredData
-            .sort((a, b) => b.bandwidth_kbps - a.bandwidth_kbps)
-            .slice(0, 10);
-    }
-
-    filteredData.forEach(item => {
-        const row = document.createElement('tr');
-        row.innerHTML = 
-            `<td>${item.timestamp}</td>
-             <td>${item.source_ip}</td>
-             <td>${item.packet_count}</td>
-             <td>${item.bandwidth_kbps}</td>`;
-        tableBody.appendChild(row);
-    });
-}
-
-
-
-
-
-        
-    
-        // Cập nhật biến ipFilter theo input người dùng
-        document.getElementById('searchIp').addEventListener('input', function() {
-            ipFilter = this.value.trim();
-            if (ipFilter === "") {
-                updateTable(allTrafficData, true); // quay về top 10
-            } else {
-                const filtered = allTrafficData.filter(item => item.source_ip.includes(ipFilter));
-                updateTable(filtered, false);
-            }
-        });
-        document.getElementById("logoutButton").addEventListener("click", function() {
-            window.location.href = "login.html";
-        });
-    </script>-->
     
 </body>
 </html>

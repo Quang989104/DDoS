@@ -114,14 +114,13 @@
             let password = document.getElementById("password").value;
             let errorMessage = document.getElementById("error-message");
     
-            // Kiểm tra thông tin đăng nhập có trống không
+            
             if (username === "" || password === "") {
                 errorMessage.innerText = "Vui lòng nhập đầy đủ thông tin!";
                 return;
             }
     
             try {
-                // Gửi yêu cầu POST đến FastAPI để kiểm tra tài khoản
                 const response = await fetch("http://localhost:8000/login", {
                     method: "POST",
                     headers: {
@@ -130,14 +129,12 @@
                     body: JSON.stringify({ username: username, password: password })
                 });
     
-                // Nếu đăng nhập thành công
                 if (response.ok) {
                     errorMessage.innerText = "";
                     const result = await response.json();
                     alert(result.message);
-                    window.location.href = "main.html"; // Chuyển hướng đến trang chính
+                    window.location.href = "main.html"; 
                 } else {
-                    // Nếu không thành công, thông báo lỗi
                     const error = await response.json();
                     errorMessage.innerText = error.detail;
                 }

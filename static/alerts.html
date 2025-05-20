@@ -18,13 +18,14 @@
         .filter-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
         .filter-bar input, .filter-bar select, .filter-bar button { padding: 8px; font-size: 16px; }
         table { width: 100%; border-collapse: collapse; background-color: #fff; border-radius: 8px; overflow: hidden; }
-        table th, table td { padding: 10px; border-bottom: 1px solid #ddd; text-align: left; }
+        table th, table td { padding: 10px; border-bottom: 1px solid #000; text-align: left; }
         table th { background-color: #f9fafb; }
         .alert-High { background-color: #f8d7da; color: #721c24; }
         .alert-Medium { background-color: #fff3cd; color: #856404; }
         .alert-Low { background-color: #d4edda; color: #155724; }
         .actions button { margin-right: 5px; padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; }
         .btn-delete { background-color: #dc3545; color: white; }
+        td.ip-cell {white-space: normal;word-break: break-word;max-width: 150px;}
     </style>
 </head>
 <body>
@@ -65,65 +66,54 @@
                 </tr>
             </thead>
             <tbody id="alertBody">
-                <!-- Dữ liệu sẽ được sinh động ở đây -->
+                
             </tbody>
         </table>
     </div>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
-        // Tạo kết nối WebSocket
-        const socket = new WebSocket("ws://localhost:8000/ws/alerts");  // Đảm bảo URL này đúng với endpoint của WebSocket trên server
+        const socket = new WebSocket("ws://localhost:8000/ws/alerts");
     
-        // Biến chứa dữ liệu cảnh báo
         let alertData = [];
-    
-        // Lắng nghe thông báo từ WebSocket
         let sentAlertIds = new Set();
 
-socket.onmessage = function(event) {
-    const data = JSON.parse(event.data);
-    console.log(data);
+        socket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            alertData = data;
+            renderAlerts();
+            sendEmailForNewAlerts(data); 
+        };
+        function sendEmailForNewAlerts(data) {
+            const newAlerts = data.filter(alert => !sentAlertIds.has(alert.id));
 
-    alertData = data;
-    renderAlerts();
+            if (newAlerts.length > 0) {
+                newAlerts.forEach(alert => sentAlertIds.add(alert.id));
 
-    sendEmailForNewAlerts(data); // Tách riêng xử lý
-};
-function sendEmailForNewAlerts(data) {
-    const newAlerts = data.filter(alert => !sentAlertIds.has(alert.id));
+                fetch("/send-alert-email", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        alerts: newAlerts,
+                        admin_email: "quangloanthanhchien4@gmail.com",
+                        admin_name: "Admin"
+                    })
+                })
+                .then(response => response.json())
+                .then(result => {
+                    console.log("✅ Gửi email thành công:", result);
+                })
+                .catch(error => {
+                    console.error("❌ Lỗi khi gửi email:", error);
+                });
+            }
+        }
 
-    if (newAlerts.length > 0) {
-        newAlerts.forEach(alert => sentAlertIds.add(alert.id));
-
-        // ✅ Gửi email ngầm, không chặn luồng chính
-        fetch("/send-alert-email", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                alerts: newAlerts,
-                admin_email: "quangloanthanhchien4@gmail.com",
-                admin_name: "Admin"
-            })
-        })
-        .then(response => response.json())
-        .then(result => {
-            console.log("✅ Gửi email thành công:", result);
-        })
-        .catch(error => {
-            console.error("❌ Lỗi khi gửi email:", error);
-        });
-    }
-}
-
-    
-        // Xử lý sự kiện khi WebSocket bị đóng
         socket.onclose = function() {
             console.log("WebSocket connection closed.");
         };
     
-        // Xử lý sự kiện lỗi
         socket.onerror = function(error) {
             console.error("WebSocket error:", error);
         };
@@ -157,7 +147,7 @@ function sendEmailForNewAlerts(data) {
                     <td>${alert.alert_type}</td>
                     <td>${alert.alert_message}</td>
                     <td>${capitalize(alert.level)}</td>
-                    <td>${alert.source_ip}</td>
+                    <td class="ip-cell">${alert.source_ip}</td>
                     <td>${alert.packet_count}</td>
                     <td>${alert.bandwidth_kbps}</td>
                     <td>${alert.admin_name}</td>
@@ -169,62 +159,55 @@ function sendEmailForNewAlerts(data) {
             }
         }
     
-    
         async function deleteAlert(id) {
-    try {
-        const confirmDelete = confirm("Bạn có chắc muốn xoá cảnh báo này?");
-        if (!confirmDelete) return;
+            try {
+                const confirmDelete = confirm("Bạn có chắc muốn xoá cảnh báo này?");
+                if (!confirmDelete) return;
 
-        const response = await fetch(`/api/alerts/${id}`, { method: 'DELETE' });
-        if (!response.ok) throw new Error("Lỗi khi xoá cảnh báo");
+                const response = await fetch(`/api/alerts/${id}`, { method: 'DELETE' });
+                if (!response.ok) throw new Error("Lỗi khi xoá cảnh báo");
 
-        // ✅ Xoá alert khỏi mảng dữ liệu
-        alertData = alertData.filter(alert => alert.id !== id);
+                alertData = alertData.filter(alert => alert.id !== id);
 
-        alert("Xoá cảnh báo thành công!");
-        renderAlerts();
-    } catch (error) {
-        console.error("❌ Lỗi khi xoá cảnh báo:", error);
-        alert("Không thể xoá cảnh báo. Vui lòng thử lại.");
-    }
-}
+                alert("Xoá cảnh báo thành công!");
+                renderAlerts();
+            } catch (error) {
+                console.error("Lỗi khi xoá cảnh báo:", error);
+                alert("Không thể xoá cảnh báo. Vui lòng thử lại.");
+            }
+        }
 
         function exportReport() {
-    const tableBody = document.querySelector("#alertTable tbody");
-    const rows = tableBody.querySelectorAll("tr");
+            const tableBody = document.querySelector("#alertTable tbody");
+            const rows = tableBody.querySelectorAll("tr");
 
-    if (rows.length === 0) {
-        alert("Không có dữ liệu để xuất báo cáo.");
-        return;
-    }
+            if (rows.length === 0) {
+                alert("Không có dữ liệu để xuất báo cáo.");
+                return;
+            }
+            let csv = "Time,Alert_Type,Text,Level,Source_IP,Packet_Count,Bandwidth(KB/s),Admin\n";
 
-    // Dòng tiêu đề
-    let csv = "Thời gian,Loại cảnh báo,Nội dung,Mức độ,IP nguồn,Tổng số gói tin,Băng thông (KB/s),Quản trị viên\n";
+            rows.forEach(row => {
+                const cols = row.querySelectorAll("td");
+                const rowData = Array.from(cols).slice(0, 8).map(td => `"${td.innerText.replace(/"/g, '""')}"`);
+                csv += rowData.join(",") + "\n";
+            });
 
-    rows.forEach(row => {
-        const cols = row.querySelectorAll("td");
-        const rowData = Array.from(cols).slice(0, 8).map(td => `"${td.innerText.replace(/"/g, '""')}"`);
-        csv += rowData.join(",") + "\n";
-    });
-
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    const dateStr = new Date().toISOString().split("T")[0];
-    link.setAttribute("download", `bao_cao_canh_bao_${dateStr}.csv`);
-    link.style.display = "none";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
-    
-        // Sự kiện lọc tìm kiếm
+            const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            const dateStr = new Date().toISOString().split("T")[0];
+            link.setAttribute("download", `bao_cao_canh_bao_${dateStr}.csv`);
+            link.style.display = "none";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
         document.getElementById("searchInput").addEventListener("input", renderAlerts);
         document.getElementById("levelFilter").addEventListener("change", renderAlerts);
         document.getElementById("dateFilter").addEventListener("change", renderAlerts);
     
-        // Tải lần đầu
         window.addEventListener("load", renderAlerts);
         $('#logoutButton').on('click', function() {
             window.location.href = "login.html";

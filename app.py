@@ -24,8 +24,15 @@ import sqlite3
 import asyncio
 from fastapi import WebSocket, WebSocketDisconnect
 import sqlite3
+from html import escape
 import asyncio
 from fastapi import HTTPException
+from fastapi import FastAPI, Form, Request
+from fastapi.responses import HTMLResponse, JSONResponse
+import sqlite3
+import bcrypt
+import secrets
+from datetime import datetime, timedelta
 
 
 app = FastAPI()
@@ -38,27 +45,20 @@ app.add_middleware(
 )
 active_connections: List[WebSocket] = []
 
-
-
-# Kết nối tới cơ sở dữ liệu
-conn = sqlite3.connect('network_monitoring.db')  # Thay 'your_database_file.db' bằng đường dẫn thực tế
+conn = sqlite3.connect('network_monitoring.db')
 cursor = conn.cursor()
 
 try:
-    # Tắt kiểm tra ràng buộc khóa ngoại nếu có
     cursor.execute("PRAGMA foreign_keys = OFF;")
     
-    # Xóa dữ liệu trong hai bảng
     cursor.execute("DELETE FROM AttackLogs;")
     cursor.execute("DELETE FROM TrafficLogs;")
     cursor.execute("DELETE FROM Alerts;")
     
-    # Reset auto increment (chỉ với SQLite)
     cursor.execute("DELETE FROM sqlite_sequence WHERE name='AttackLogs';")
     cursor.execute("DELETE FROM sqlite_sequence WHERE name='TrafficLogs';")
     cursor.execute("DELETE FROM sqlite_sequence WHERE name='Alerts';")
     
-    # Bật lại kiểm tra khóa ngoại
     cursor.execute("PRAGMA foreign_keys = ON;")
     
     conn.commit()
@@ -71,28 +71,17 @@ except Exception as e:
 finally:
     conn.close()
 
-
-from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, JSONResponse
-import sqlite3
-import bcrypt
-import secrets
-from datetime import datetime, timedelta
 conn = sqlite3.connect("network_monitoring.db", check_same_thread=False)
 cursor = conn.cursor()
-# Lưu token đặt lại mật khẩu tạm thời (RAM)
 reset_tokens = {}
 reset_tokens_expiry = {}
 
-# Hàm băm mật khẩu
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
-# Kiểm tra mật khẩu
 def check_password(password: str, hashed: str) -> bool:
     return bcrypt.checkpw(password.encode(), hashed.encode())
 
-# Cập nhật mật khẩu thành hash
 @app.get("/update-password-to-hashed")
 def update_password_to_hashed():
     cursor.execute("SELECT password FROM Admin WHERE username = ?", ("admin",))
@@ -101,7 +90,7 @@ def update_password_to_hashed():
     if row is None:
         return {"message": "Không tìm thấy user admin"}
 
-    current_password = row[2]  # sửa lại index nếu cần, thường là 0 nếu chỉ SELECT 1 cột
+    current_password = row[2]
 
     if current_password.startswith("$2b$"):
         return {"message": "Mật khẩu đã được mã hóa rồi"}
@@ -124,8 +113,6 @@ def send_reset_password(email: str, reset_link: str):
 
     Nếu bạn không yêu cầu, hãy bỏ qua email này.
     """
-
-    # Thông tin tài khoản gửi email
     sender_email = "quangloanthanhchien4@gmail.com"
     sender_password = "nvtwvjpwnenkzrhj"
 
@@ -143,11 +130,10 @@ def send_reset_password(email: str, reset_link: str):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi khi gửi email: {str(e)}")
-# ✅ Model để nhận JSON từ frontend
+
 class ForgotPasswordRequest(BaseModel):
     admin_email: str
 
-# Gửi yêu cầu quên mật khẩu (sửa lại để nhận JSON)
 @app.post("/forgot-password")
 async def forgot_password(request_data: ForgotPasswordRequest):
     email = request_data.admin_email.strip()
@@ -162,13 +148,10 @@ async def forgot_password(request_data: ForgotPasswordRequest):
 
     reset_link = f"http://localhost:8000/reset-password?token={token}"
 
-    # ✅ Gửi email thay vì chỉ in ra
     send_reset_password(email, reset_link)
 
     return {"message": "Đã gửi link đặt lại mật khẩu đến email."}
 
-from html import escape
-# Form đặt lại mật khẩu
 @app.get("/reset-password", response_class=HTMLResponse)
 async def reset_password_form(token: str):
     if token not in reset_tokens or datetime.now() > reset_tokens_expiry[token]:
@@ -295,7 +278,6 @@ async def reset_password_form(token: str):
 </html>
     """
 
-# Xử lý đặt lại mật khẩu
 @app.post("/reset-password")
 async def reset_password(request: Request, new_password: str = Form(...)):
     token = request.query_params.get("token")
@@ -330,7 +312,6 @@ async def send_alert_email(request: Request):
     if not alerts:
         return {"error": "No alerts to send"}
 
-    # Soạn nội dung email tổng hợp
     subject = "[Cảnh báo] Có {} cảnh báo mới từ hệ thống".format(len(alerts))
 
     body = f"Xin chào {admin_name},\n\n"
@@ -367,7 +348,6 @@ async def send_alert_email(request: Request):
     except Exception as e:
         return {"error": str(e)}
 
-# Định nghĩa schema dữ liệu gửi lên
 class ThresholdRequest(BaseModel):
     value: float
 
@@ -381,15 +361,12 @@ async def change_threshold(data: ThresholdRequest):
         raise HTTPException(status_code=500, detail=f"Lỗi khi cập nhật threshold: {str(e)}")
 
 
-
-
-# Mô hình yêu cầu đổi mật khẩu
 class ChangePasswordRequest(BaseModel):
     admin_id: int
     old_password: str
     new_password: str
 
-# API đổi mật khẩu
+
 @app.post("/change-password")
 async def change_password(data: ChangePasswordRequest):
     try:
@@ -401,7 +378,6 @@ async def change_password(data: ChangePasswordRequest):
         with sqlite3.connect("network_monitoring.db") as conn:
             cursor = conn.cursor()
 
-            # Lấy mật khẩu hiện tại trong DB
             cursor.execute("SELECT password FROM Admin WHERE id = ?", (data.admin_id,))
             result = cursor.fetchone()
 
@@ -409,15 +385,10 @@ async def change_password(data: ChangePasswordRequest):
                 raise HTTPException(status_code=404, detail="Không tìm thấy admin")
 
             stored_hashed_password = result[0]
-
-            # So sánh mật khẩu cũ người dùng nhập với mật khẩu đã mã hóa trong DB
             if not check_password(data.old_password, stored_hashed_password):
                 raise HTTPException(status_code=400, detail="Mật khẩu cũ không đúng")
-
-            # Mã hóa mật khẩu mới
             hashed_new_password = hash_password(data.new_password)
 
-            # Cập nhật vào DB
             cursor.execute("UPDATE Admin SET password = ? WHERE id = ?", (hashed_new_password, data.admin_id))
             conn.commit()
 
@@ -437,14 +408,12 @@ async def change_name(data: ChangeNameRequest):
         with sqlite3.connect("network_monitoring.db") as conn:
             cursor = conn.cursor()
 
-            # Kiểm tra xem admin có tồn tại không
             cursor.execute("SELECT * FROM Admin WHERE id = ?", (data.admin_id,))
             user = cursor.fetchone()
 
             if user is None:
                 raise HTTPException(status_code=404, detail="Admin không tồn tại")
 
-            # Cập nhật tên mới
             cursor.execute("UPDATE Admin SET username = ? WHERE id = ?", (data.new_name, data.admin_id))
             conn.commit()
 
@@ -456,7 +425,7 @@ async def change_name(data: ChangeNameRequest):
 
 class ChangeEmailRequest(BaseModel):
     admin_id: int
-    new_email: EmailStr  # Kiểm tra hợp lệ định dạng email tự động
+    new_email: EmailStr 
 
 @app.post("/change-email")
 async def change_email(data: ChangeEmailRequest):
@@ -464,14 +433,12 @@ async def change_email(data: ChangeEmailRequest):
         with sqlite3.connect("network_monitoring.db") as conn:
             cursor = conn.cursor()
 
-            # Kiểm tra admin có tồn tại không
             cursor.execute("SELECT * FROM Admin WHERE id = ?", (data.admin_id,))
             user = cursor.fetchone()
 
             if user is None:
                 raise HTTPException(status_code=404, detail="Admin không tồn tại")
 
-            # Cập nhật email mới
             cursor.execute("UPDATE Admin SET email = ? WHERE id = ?", (data.new_email, data.admin_id))
             conn.commit()
 
@@ -487,7 +454,6 @@ async def websocket_admins(websocket: WebSocket):
 
     try:
         while True:
-            # Kết nối cơ sở dữ liệu bên ngoài vòng lặp để tránh mở kết nối liên tục
             with sqlite3.connect("network_monitoring.db") as conn:
                 cursor = conn.cursor()
 
@@ -503,30 +469,22 @@ async def websocket_admins(websocket: WebSocket):
                         "email": row[3]
                     }
                     admins.append(admin)
-
-                # Gửi dữ liệu mới
                 await websocket.send_json(admins)
-
-            # Đợi 5 giây trước khi gửi dữ liệu lại
             await asyncio.sleep(1)
 
     except WebSocketDisconnect:
         print("⚠️ Client đã ngắt kết nối WebSocket.")
     except Exception as e:
         print(f"❌ Lỗi khi xử lý WebSocket: {e}")
-
-
 class LoginRequest(BaseModel):
     username: str
     password: str
 
-# API đăng nhập
 @app.post("/login")
 def login(data: LoginRequest):
     conn = sqlite3.connect("network_monitoring.db")
     cursor = conn.cursor()
 
-    # Lấy người dùng theo username
     cursor.execute("SELECT password FROM Admin WHERE username = ?", (data.username,))
     result = cursor.fetchone()
     conn.close()
@@ -544,19 +502,17 @@ def login(data: LoginRequest):
 @app.websocket("/ws/alerts")
 async def websocket_alerts(websocket: WebSocket):
     await websocket.accept()
-    last_count = -1  # Khởi tạo số lượng bản ghi ban đầu
+    last_count = -1 
 
     try:
         while True:
             with sqlite3.connect("network_monitoring.db") as conn:
                 cursor = conn.cursor()
 
-                # Lấy số lượng bản ghi hiện tại
                 cursor.execute("SELECT COUNT(*) FROM Alerts")
                 current_count = cursor.fetchone()[0]
 
                 if current_count != last_count:
-                    # Nếu có sự thay đổi, lấy dữ liệu mới
                     cursor.execute("SELECT * FROM Alerts ORDER BY timestamp DESC")
                     rows = cursor.fetchall()
 
@@ -578,7 +534,6 @@ async def websocket_alerts(websocket: WebSocket):
                             if traffic_data:
                                 source_ip, bandwidth_kbps, packet_count = traffic_data
 
-                        # 📌 Lấy thêm thông tin admin
                         admin_name = None
                         admin_email = None
                         if admin_id:
@@ -606,13 +561,11 @@ async def websocket_alerts(websocket: WebSocket):
                         }
                         alerts.append(alert)
 
-                    # Gửi dữ liệu mới đến client
                     await websocket.send_json(alerts)
 
-                    # Cập nhật số lượng bản ghi
                     last_count = current_count
 
-            await asyncio.sleep(1)  # Tùy chỉnh thời gian kiểm tra lại
+            await asyncio.sleep(1) 
 
     except WebSocketDisconnect:
         print("🔌 WebSocket client disconnected.")
@@ -624,19 +577,16 @@ async def websocket_alerts(websocket: WebSocket):
 @app.websocket("/ws/reports")
 async def websocket_reports(websocket: WebSocket):
     await websocket.accept()
-    last_count = -1  # ban đầu chưa có bản ghi nào
+    last_count = -1
 
     try:
         while True:
             conn = sqlite3.connect("network_monitoring.db")
             cursor = conn.cursor()
-
-            # Lấy số lượng bản ghi hiện tại
             cursor.execute("SELECT COUNT(*) FROM AttackLogs")
             current_count = cursor.fetchone()[0]
 
             if current_count != last_count:
-                # Nếu số lượng thay đổi, truy vấn toàn bộ dữ liệu
                 cursor.execute("SELECT * FROM AttackLogs ORDER BY timestamp DESC")
                 rows = cursor.fetchall()
 
@@ -659,19 +609,16 @@ async def websocket_reports(websocket: WebSocket):
                     }
                     reports.append(report)
 
-                # Gửi dữ liệu mới
                 await websocket.send_json(reports)
-
-                # Cập nhật số lượng bản ghi đã xử lý
                 last_count = current_count
 
             conn.close()
             await asyncio.sleep(1)
 
     except WebSocketDisconnect:
-        print("⚠️ Client đã ngắt kết nối WebSocket.")
+        print(" Client đã ngắt kết nối WebSocket.")
     except Exception as e:
-        print(f"❌ Lỗi khi xử lý WebSocket: {e}")
+        print(f" Lỗi khi xử lý WebSocket: {e}")
 
 import aiosqlite
 
@@ -705,20 +652,17 @@ async def websocket_traffic(websocket: WebSocket):
                 if message.strip().lower() == "ping":
                     await websocket.send_text("pong")
                     continue
-
-                # Nếu message là JSON → xử lý bình thường
                 try:
                     data = json.loads(message)
                 except json.JSONDecodeError:
-                    print(f"❌ Dữ liệu không hợp lệ từ client: {message}")
+                    print(f"Dữ liệu không hợp lệ từ client: {message}")
                     continue
 
                 source_ip = data.get("source_ip")
                 if isinstance(source_ip, list):
-                    source_ip = ",".join(source_ip)
+                    source_ip = "   ".join(source_ip)
                 bandwidth = data.get("bandwidth_kbps", 0)
                 if bandwidth > threshold:
-                # Lưu vào database
                     conn = sqlite3.connect("network_monitoring.db")
                     cursor = conn.cursor()
                     cursor.execute("""
@@ -733,11 +677,10 @@ async def websocket_traffic(websocket: WebSocket):
                     ))
                     traffic_log_id = cursor.lastrowid
 
-                    # Phân loại attack
                     level = None
-                    if bandwidth > 75:
+                    if bandwidth > threshold+60:
                         level = "High"
-                    elif bandwidth > 73:
+                    elif bandwidth > threshold+30:
                         level = "Medium"
                     elif bandwidth > threshold:
                         level = "Low"
@@ -758,7 +701,6 @@ async def websocket_traffic(websocket: WebSocket):
                             traffic_log_id
                         ))
 
-                        # Lấy attack_log_id
                         cursor.execute("""
                             SELECT id FROM AttackLogs
                             WHERE timestamp = ? AND attack_type = ?
@@ -767,7 +709,6 @@ async def websocket_traffic(websocket: WebSocket):
                         result = cursor.fetchone()
                         attack_log_id = result[0] if result else None
 
-                        # Ghi vào báo cáo
                         cursor.execute("""
                             INSERT INTO Reports (
                                 timestamp, attack_log_id, admin_id,
@@ -778,12 +719,11 @@ async def websocket_traffic(websocket: WebSocket):
                             data.get("timestamp"),
                             attack_log_id,
                             "1",
-                            "Lưu lượng tăng bất thường",
+                            "Abnormal traffic increase",
                             data.get("attack_type"),
                             level,
                         ))
 
-                        # Cảnh báo
                         cursor.execute("""
                             INSERT INTO Alerts (
                                 attack_log_id, admin_id, timestamp, alert_message,
@@ -794,7 +734,7 @@ async def websocket_traffic(websocket: WebSocket):
                             traffic_log_id,
                             "1",
                             data.get("timestamp"),
-                            "Lưu lượng tăng bất thường",
+                            "Abnormal traffic increase",
                             data.get("attack_type"),
                             level
                         ))
@@ -802,7 +742,6 @@ async def websocket_traffic(websocket: WebSocket):
                     conn.commit()
                     conn.close()
 
-                # Gửi broadcast đến tất cả client còn kết nối
                 disconnected_clients = []
                 for client in active_connections:
                     try:
@@ -820,20 +759,15 @@ async def websocket_traffic(websocket: WebSocket):
     finally:
         if websocket in active_connections:
             active_connections.remove(websocket)
-            print(f"❌ Client disconnected: {websocket.client}")
+            print(f"Client disconnected: {websocket.client}")
 
 
-
-
-# ✅ Mount thư mục static
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# ✅ Truy cập "/" sẽ hiện main.html
 @app.get("/", include_in_schema=False)
 async def root():
     return FileResponse("static/login.html", media_type="text/html")
 
-# ✅ Route trả HTML tĩnh
 html_routes = {
     "/main.html": "main.html",
     "/traffic.html": "traffic.html",
@@ -854,7 +788,6 @@ def create_html_route(path, filename):
 for path, filename in html_routes.items():
     create_html_route(path, filename)
 
-# Cho phép CORS cho tất cả các domain
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

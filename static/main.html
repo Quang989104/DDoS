@@ -20,7 +20,7 @@
         .card { padding: 15px; border-radius: 8px; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; }
         .card h3 { margin-bottom: 5px; font-size: 16px; }
         .card p { font-size: 14px; font-weight: bold; }
-        .charts { display: grid; grid-template-columns: 2fr 1fr; gap: 15px; }
+        .charts { display: grid; grid-template-columns: 2fr 1fr; gap: 15px; height: 75%}
         canvas { background: #fff; border-radius: 8px; padding: 10px; }
     </style>
 </head>
@@ -39,14 +39,13 @@
             <h1>Hệ thống phát hiện tấn công DDoS</h1>
         </div>
         <div class="cards">
-            <div class="card"><i class="fas fa-network-wired"></i><h3>Lưu lượng</h3><p id="traffic">0 Mbps</p></div>
+            <div class="card"><i class="fas fa-network-wired"></i><h3>Lưu lượng</h3><p id="traffic">0 Kbps</p></div>
             <div class="card"><i class="fas fa-bell"></i><h3>Cảnh báo</h3><p id="alerts">0</p></div>
             <div class="card"><i class="fas fa-shield-alt"></i><h3>Tấn công</h3><p id="attacks">0</p></div>
             <div class="card"><i class="fas fa-file-alt"></i><h3>Báo cáo</h3><p id="reports">0</p></div>
         </div>
         <div class="charts">
             <canvas id="trafficChart"></canvas>
-            <canvas id="alertChart"></canvas>
         </div>
     </div>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -69,7 +68,7 @@
                     if (Array.isArray(data2)) {
                         allReports = data2;
                         document.getElementById("reports").innerText = allReports.length;
-                        document.getElementById("attacks").innerText = allReports.length; // nếu tấn công cũng = reports
+                        document.getElementById("attacks").innerText = allReports.length; 
                     } else {
                         throw new Error("Dữ liệu không phải dạng mảng.");
                     }
@@ -137,9 +136,7 @@
                     trafficChart.update();
     
                     allTrafficData.push(data);
-    
-                    // Hiển thị lưu lượng mới nhất lên giao diện
-                    document.getElementById("traffic").innerText = bandwidth + " Mbps";
+                    document.getElementById("traffic").innerText = bandwidth + " Kbps";
     
                 } catch (e) {
                     console.warn("Lỗi khi xử lý dữ liệu từ WebSocket Traffic:", e);
@@ -160,7 +157,7 @@
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Lưu lượng mạng (Mbps)',
+                    label: 'Lưu lượng mạng (Kbps)',
                     data: dataPoints,
                     borderColor: 'blue',
                     backgroundColor: 'rgba(0, 0, 255, 0.1)',
@@ -169,22 +166,19 @@
             },
             options: {
                 animation: false,
+                maintainAspectRatio: false,
                 scales: {
                     x: { title: { display: true, text: 'Thời gian' } },
-                    y: { title: { display: true, text: 'Mbps' }, suggestedMin: 0, suggestedMax: 100 }
+                    y: { title: { display: true, text: 'Kbps' }, suggestedMin: 0, suggestedMax: 100 }
                 }
             }
         });
         $('#logoutButton').on('click', function() {
             window.location.href = "login.html";
         });
-        // Gọi các kết nối WebSocket
         connectWebSocketReports();
         connectWebSocketAlerts();
         connectWebSocketTraffic();
     </script>
-    
-    
-    
 </body>
 </html>
