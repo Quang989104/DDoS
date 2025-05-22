@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pydantic
+scapy
+bcrypt
+email-validator
+aiofiles
+python-multipart
+websockets
+requests

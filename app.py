@@ -1,38 +1,20 @@
-from fastapi import FastAPI, WebSocket, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from scapy.all import sniff, IP, get_if_list
-from datetime import datetime
+from datetime import datetime, timedelta
 import sqlite3
 import asyncio
-from pydantic import BaseModel, EmailStr
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from fastapi import WebSocket
 from typing import List
-from fastapi import WebSocketDisconnect
-import sqlite3
-from fastapi import WebSocket, WebSocketDisconnect
-from fastapi import WebSocket, WebSocketDisconnect
-import sqlite3
 import json
-from fastapi import WebSocket, WebSocketDisconnect
-import sqlite3
-import asyncio
-from fastapi import WebSocket, WebSocketDisconnect
-import sqlite3
 from html import escape
-import asyncio
-from fastapi import HTTPException
-from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, JSONResponse
-import sqlite3
 import bcrypt
 import secrets
-from datetime import datetime, timedelta
 
 
 app = FastAPI()
@@ -144,7 +126,7 @@ async def forgot_password(request_data: ForgotPasswordRequest):
 
     token = secrets.token_urlsafe(16)
     reset_tokens[token] = email
-    reset_tokens_expiry[token] = datetime.now() + timedelta(minutes=15)
+    reset_tokens_expiry[token] = datetime.now() + timedelta(minutes=1)
 
     reset_link = f"http://localhost:8000/reset-password?token={token}"
 

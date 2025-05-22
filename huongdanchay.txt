@@ -1,0 +1,12 @@
+1. Khởi động server FastAPI
+uvicorn app:app --reload
+
+2. Truy cập giao diện
+http://127.0.0.1:8000/
+
+Đăng nhập tài khoản:
+Username: admin
+Password: 123
+
+3. Chạy file detect_ddos.py
+python detect_ddos.py
