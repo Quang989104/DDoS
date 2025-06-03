@@ -126,7 +126,7 @@ async def forgot_password(request_data: ForgotPasswordRequest):
 
     token = secrets.token_urlsafe(16)
     reset_tokens[token] = email
-    reset_tokens_expiry[token] = datetime.now() + timedelta(minutes=1)
+    reset_tokens_expiry[token] = datetime.now() + timedelta(minutes=15)
 
     reset_link = f"http://localhost:8000/reset-password?token={token}"
 
@@ -288,8 +288,9 @@ import smtplib
 async def send_alert_email(request: Request):
     data = await request.json()
     alerts = data.get("alerts", [])
-    admin_email = data.get("admin_email")
+    
     admin_name = data.get("admin_name")
+    admin_email = data.get("admin_email")
 
     if not alerts:
         return {"error": "No alerts to send"}
@@ -302,9 +303,10 @@ async def send_alert_email(request: Request):
     for idx, alert in enumerate(alerts, 1):
         body += f"""Cảnh báo #{idx}:
 - Nội dung: {alert.get("alert_message")}
+- Thời gian: {alert.get("timestamp")}
 - Loại tấn công: {alert.get("alert_type")}
 - Tổng số gói tin: {alert.get("packet_count")}
-- Băng thông: {alert.get("bandwidth_kbps")}
+- Băng thông: {alert.get("bandwidth_usage")}
 - Mức độ: {alert.get("level")}
 - IP nguồn: {alert.get("source_ip")}
 
@@ -503,18 +505,18 @@ async def websocket_alerts(websocket: WebSocket):
                         traffic_log_id = row[1]
                         admin_id = row[2]
 
-                        bandwidth_kbps = None
+                        bandwidth_usage= None
                         packet_count = None
                         source_ip = None
 
                         if traffic_log_id:
                             cursor.execute(
-                                "SELECT source_ip, bandwidth_kbps, packet_count FROM TrafficLogs WHERE id = ?",
+                                "SELECT source_ip, bandwidth_usage, packet_count FROM TrafficLogs WHERE id = ?",
                                 (traffic_log_id,)
                             )
                             traffic_data = cursor.fetchone()
                             if traffic_data:
-                                source_ip, bandwidth_kbps, packet_count = traffic_data
+                                source_ip, bandwidth_usage, packet_count = traffic_data
 
                         admin_name = None
                         admin_email = None
@@ -536,7 +538,7 @@ async def websocket_alerts(websocket: WebSocket):
                             "alert_type": row[5],
                             "level": row[6],
                             "source_ip": source_ip,
-                            "bandwidth_kbps": bandwidth_kbps,
+                            "bandwidth_usage": bandwidth_usage,
                             "packet_count": packet_count,
                             "admin_name": admin_name,
                             "admin_email": admin_email
@@ -575,16 +577,16 @@ async def websocket_reports(websocket: WebSocket):
                 reports = []
                 for row in rows:
                     traffic_log_id = row[6]
-                    cursor.execute("SELECT bandwidth_kbps FROM TrafficLogs WHERE id = ?", (traffic_log_id,))
+                    cursor.execute("SELECT bandwidth_usage FROM TrafficLogs WHERE id = ?", (traffic_log_id,))
                     bandwidth_result = cursor.fetchone()
-                    bandwidth_kbps = bandwidth_result[0] if bandwidth_result else None
+                    bandwidth_usage = bandwidth_result[0] if bandwidth_result else None
 
                     report = {
                         "id": row[0],
                         "timestamp": row[1],
                         "source_ip": row[2],
                         "packet_count": row[3],
-                        "bandwidth_kbps": bandwidth_kbps,
+                        "bandwidth_usage": bandwidth_usage,
                         "attack_type": row[4],
                         "level": row[5],
                         "traffic_log_id": traffic_log_id
@@ -643,19 +645,19 @@ async def websocket_traffic(websocket: WebSocket):
                 source_ip = data.get("source_ip")
                 if isinstance(source_ip, list):
                     source_ip = "   ".join(source_ip)
-                bandwidth = data.get("bandwidth_kbps", 0)
+                bandwidth = data.get("bandwidth_usage", 0)
                 if bandwidth > threshold:
                     conn = sqlite3.connect("network_monitoring.db")
                     cursor = conn.cursor()
                     cursor.execute("""
-                        INSERT INTO TrafficLogs (timestamp, source_ip, destination_ip, packet_count, bandwidth_kbps)
+                        INSERT INTO TrafficLogs (timestamp, source_ip, destination_ip, packet_count, bandwidth_usage)
                         VALUES (?, ?, ?, ?, ?)
                     """, (
                         data.get("timestamp"),
                         source_ip,
                         data.get("destination_ip"),
                         data.get("packet_count"),
-                        data.get("bandwidth_kbps")
+                        data.get("bandwidth_usage")
                     ))
                     traffic_log_id = cursor.lastrowid
 
@@ -783,7 +785,7 @@ class TrafficLog(BaseModel):
     source_ip: str
     destination_ip: str
     packet_count: int
-    bandwidth_kbps: float
+    bandwidth_usage: float
 
 sniffing_status = {"status": "stopped"}
 
@@ -804,7 +806,7 @@ def create_tables():
             source_ip TEXT,
             destination_ip TEXT,
             packet_count INTEGER,
-            bandwidth_kbps REAL
+            bandwidth_usage REAL
         )
     """)
     cursor.execute("""

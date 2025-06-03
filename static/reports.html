@@ -197,7 +197,7 @@ function applyFilter() {
     const toDate = document.getElementById("toDate").value;
     const severity = document.getElementById("severityFilter").value;
 
-    // Nếu không có bộ lọc nào, tắt chế độ lọc
+    
     if (!fromDate && !toDate && !severity) {
         isFiltering = false;
         renderTable(allReports);
@@ -205,14 +205,16 @@ function applyFilter() {
         return allReports;
     }
 
-    // Bắt đầu lọc
+    
     isFiltering = true;
 
     filteredReports = allReports.filter(r => {
         const timestamp = new Date(r.timestamp);
-        return (!fromDate || timestamp >= new Date(fromDate)) &&
-               (!toDate || timestamp <= new Date(toDate)) &&
-               (!severity || r.level === severity);
+        return ((!fromDate || timestamp >= new Date(fromDate)) &&
+               (!toDate || timestamp <= new Date(toDate).setHours(23, 59, 59, 999)) &&
+               (!severity || r.level === severity)) || 
+               ((!fromDate || timestamp <= new Date(fromDate)) &&
+               (!toDate || timestamp >= new Date(toDate)))
     });
 
     renderTable(filteredReports);
@@ -244,7 +246,7 @@ function renderTable(data) {
             <td class="cell-ip">${report.source_ip}</td>
             <td>${report.level}</td>
             <td>${report.packet_count}</td>
-            <td>${report.bandwidth_kbps}</td>
+            <td>${report.bandwidth_usage}</td>
             <td><button onclick="downloadRowCSV(${index})">Tải theo hàng</button></td>
         `;
         table.appendChild(row);
@@ -258,9 +260,9 @@ function renderTable(data) {
 
         const filtered = applyFilter();
 
-        let csv = "Time,Attack_Type,Source_IP,Level,Packet_Count,Bandwidth (Kbps)\n";
+        let csv = "Time,Attack_Type,Source_IP,Level,Packet_Count,Bandwidth (Mbps)\n";
         filtered.forEach(r => {
-            csv += `${r.timestamp},${r.attack_type},${r.source_ip},${r.level},${r.packet_count},${r.bandwidth_kbps}\n`;
+            csv += `${r.timestamp},${r.attack_type},${r.source_ip},${r.level},${r.packet_count},${r.bandwidth_usage}\n`;
         });
 
         const blob = new Blob([csv], { type: 'text/csv' });
@@ -274,14 +276,14 @@ function renderTable(data) {
     function downloadRowCSV(index) {
         const r = allReports[index];
 
-        let csv = "Time,Attack_Type,Source_IP,Level,Packet_Count,Bandwidth (Kbps)\n";
-        csv += `${r.timestamp},${r.attack_type},${r.source_ip},${r.level},${r.packet_count},${r.bandwidth_kbps}\n`;
+        let csv = "Time,Attack_Type,Source_IP,Level,Packet_Count,Bandwidth (Mbps)\n";
+        csv += `${r.timestamp},${r.attack_type},${r.source_ip},${r.level},${r.packet_count},${r.bandwidth_usage}\n`;
 
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        const filename = `report_${r.source_ip.replace(/\./g, '_')}_${Date.now()}.csv`;
+        const filename = `report_row.csv`;
         a.download = filename;
 
         a.click();

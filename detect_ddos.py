@@ -50,12 +50,12 @@ def send_traffic_data(ws, stats, duration=1):
         total_bytes = sum(
             stats.get((src_ip, dst_ip), [0, 0])[1] for src_ip in info["source_ips"]
         )
-        bandwidth_kbps = (total_bytes * 8) / duration / 1000
+        bandwidth_Mbps = (total_bytes * 8) / duration / 1000
         data = {
             "destination_ip": dst_ip,
             "source_ip": info["source_ips"],
             "packet_count": info["packet_count"],
-            "bandwidth_kbps": round(bandwidth_kbps, 2),
+            "bandwidth_usage": round(bandwidth_Mbps, 2),
             "attack_type": info["attack_type"],
             "timestamp": timestamp
         }

@@ -128,7 +128,7 @@
             console.log("Dữ liệu sau khi parse:", data);
 
             const timestamp = data.timestamp;
-            const bandwidth = data.bandwidth_kbps;
+            const bandwidth = data.bandwidth_usage;
 
             labels.push(timestamp);
             dataPoints.push(bandwidth);
@@ -166,7 +166,7 @@
         data: {
             labels: labels,
             datasets: [{
-                label: 'Lưu lượng mạng (Kbps)',
+                label: 'Lưu lượng mạng (Mbps)',
                 data: dataPoints,
                 borderColor: 'blue',
                 backgroundColor: 'rgba(0, 0, 255, 0.1)',
@@ -178,7 +178,7 @@
             maintainAspectRatio: false,
             scales: {
                 x: { title: { display: true, text: 'Thời gian' } },
-                y: { title: { display: true, text: 'Kbps' }, suggestedMin: 0, suggestedMax: 100 }
+                y: { title: { display: true, text: 'Mbps' }, suggestedMin: 0, suggestedMax: 100 }
             }
         }
     });
@@ -187,11 +187,11 @@
         const $tableBody = $('#suspiciousIpTable');
         $tableBody.empty();
 
-        let filteredData = data.filter(item => item.bandwidth_kbps > 50);
+        let filteredData = data.filter(item => item.bandwidth_usage > 50 && item.bandwidth_usage<70);
 
         if (limit) {
             filteredData = filteredData
-                .sort((a, b) => b.bandwidth_kbps - a.bandwidth_kbps)
+                .sort((a, b) => b.bandwidth_usage - a.bandwidth_usage)
                 .slice(0, 10);
         }
 
@@ -201,7 +201,7 @@
                     <td>${item.timestamp}</td>
                     <td class="cell-ip">${item.source_ip}</td>
                     <td>${item.packet_count}</td>
-                    <td>${item.bandwidth_kbps}</td>
+                    <td>${item.bandwidth_usage}</td>
                 </tr>`;
             $tableBody.append(row);
         });

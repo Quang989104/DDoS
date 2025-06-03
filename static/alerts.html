@@ -60,7 +60,7 @@
                     <th>Mức độ</th>
                     <th>IP nguồn</th>
                     <th>Tổng số gói tin</th>
-                    <th>Băng thông (KB/s)</th>
+                    <th>Băng thông (MB/s)</th>
                     <th>Quản trị viên</th>
                     <th>Hành động</th>
                 </tr>
@@ -88,7 +88,6 @@
 
             if (newAlerts.length > 0) {
                 newAlerts.forEach(alert => sentAlertIds.add(alert.id));
-
                 fetch("/send-alert-email", {
                     method: "POST",
                     headers: {
@@ -96,8 +95,8 @@
                     },
                     body: JSON.stringify({
                         alerts: newAlerts,
-                        admin_email: "quangloanthanhchien4@gmail.com",
-                        admin_name: "Admin"
+                        admin_name: newAlerts[0].admin_name,
+                        admin_email: newAlerts[0].admin_email
                     })
                 })
                 .then(response => response.json())
@@ -141,7 +140,7 @@
             for (const alert of filtered) {
                 const row = document.createElement("tr");
                 row.classList.add(`alert-${alert.level}`);
-    
+                console.log(alert)
                 row.innerHTML = `
                     <td>${alert.timestamp}</td>
                     <td>${alert.alert_type}</td>
@@ -149,7 +148,7 @@
                     <td>${capitalize(alert.level)}</td>
                     <td class="ip-cell">${alert.source_ip}</td>
                     <td>${alert.packet_count}</td>
-                    <td>${alert.bandwidth_kbps}</td>
+                    <td>${alert.bandwidth_usage}</td>
                     <td>${alert.admin_name}</td>
                     <td class="actions">
                         <button class="btn-delete" onclick="deleteAlert('${alert.id}')">Xoá</button>

@@ -39,7 +39,7 @@
             <h1>Hệ thống phát hiện tấn công DDoS</h1>
         </div>
         <div class="cards">
-            <div class="card"><i class="fas fa-network-wired"></i><h3>Lưu lượng</h3><p id="traffic">0 Kbps</p></div>
+            <div class="card"><i class="fas fa-network-wired"></i><h3>Lưu lượng</h3><p id="traffic">0 Mbps</p></div>
             <div class="card"><i class="fas fa-bell"></i><h3>Cảnh báo</h3><p id="alerts">0</p></div>
             <div class="card"><i class="fas fa-shield-alt"></i><h3>Tấn công</h3><p id="attacks">0</p></div>
             <div class="card"><i class="fas fa-file-alt"></i><h3>Báo cáo</h3><p id="reports">0</p></div>
@@ -125,7 +125,7 @@
                 try {
                     let data = JSON.parse(event.data);
                     const timestamp = data.timestamp;
-                    const bandwidth = data.bandwidth_kbps;
+                    const bandwidth = data.bandwidth_usage;
     
                     labels.push(timestamp);
                     dataPoints.push(bandwidth);
@@ -136,7 +136,7 @@
                     trafficChart.update();
     
                     allTrafficData.push(data);
-                    document.getElementById("traffic").innerText = bandwidth + " Kbps";
+                    document.getElementById("traffic").innerText = bandwidth + " Mbps";
     
                 } catch (e) {
                     console.warn("Lỗi khi xử lý dữ liệu từ WebSocket Traffic:", e);
@@ -157,7 +157,7 @@
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Lưu lượng mạng (Kbps)',
+                    label: 'Lưu lượng mạng (Mbps)',
                     data: dataPoints,
                     borderColor: 'blue',
                     backgroundColor: 'rgba(0, 0, 255, 0.1)',
@@ -169,7 +169,7 @@
                 maintainAspectRatio: false,
                 scales: {
                     x: { title: { display: true, text: 'Thời gian' } },
-                    y: { title: { display: true, text: 'Kbps' }, suggestedMin: 0, suggestedMax: 100 }
+                    y: { title: { display: true, text: 'Mbps' }, suggestedMin: 0, suggestedMax: 100 }
                 }
             }
         });
