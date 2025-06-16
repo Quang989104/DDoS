@@ -81,33 +81,7 @@
             const data = JSON.parse(event.data);
             alertData = data;
             renderAlerts();
-            //sendEmailForNewAlerts(data); 
         };
-        function sendEmailForNewAlerts(data) {
-            const newAlerts = data.filter(alert => !sentAlertIds.has(alert.id));
-
-            if (newAlerts.length > 0) {
-                newAlerts.forEach(alert => sentAlertIds.add(alert.id));
-                fetch("/send-alert-email", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        alerts: newAlerts,
-                        admin_name: newAlerts[0].admin_name,
-                        admin_email: newAlerts[0].admin_email
-                    })
-                })
-                .then(response => response.json())
-                .then(result => {
-                    console.log(" Gửi email thành công:", result);
-                })
-                .catch(error => {
-                    console.error(" Lỗi khi gửi email:", error);
-                });
-            }
-        }
 
         socket.onclose = function() {
             console.log("WebSocket connection closed.");

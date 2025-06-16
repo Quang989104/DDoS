@@ -286,54 +286,6 @@ from fastapi import FastAPI
 from email.mime.text import MIMEText
 import smtplib
 
-"""@app.post("/send-alert-email")
-async def send_alert_email(request: Request):
-    data = await request.json()
-    alerts = data.get("alerts", [])
-    
-    admin_name = data.get("admin_name")
-    admin_email = data.get("admin_email")
-
-    if not alerts:
-        return {"error": "No alerts to send"}
-
-    subject = "[Cảnh báo] Có {} cảnh báo mới từ hệ thống".format(len(alerts))
-
-    body = f"Xin chào {admin_name},\n\n"
-    body += "Bạn có {} cảnh báo mới:\n\n".format(len(alerts))
-
-    for idx, alert in enumerate(alerts, 1):
-        body += f""Cảnh báo #{idx}:
-- Nội dung: {alert.get("alert_message")}
-- Thời gian: {alert.get("timestamp")}
-- Loại tấn công: {alert.get("alert_type")}
-- Tổng số gói tin: {alert.get("packet_count")}
-- Băng thông: {alert.get("bandwidth_usage")}
-- Mức độ: {alert.get("level")}
-- IP nguồn: {alert.get("source_ip")}
-
-""
-
-    body += "\nVui lòng kiểm tra hệ thống để xử lý kịp thời.\n\nTrân trọng,\nHệ thống Giám sát mạng"
-
-    sender_email = "quangloanthanhchien4@gmail.com"
-    sender_password = "nvtwvjpwnenkzrhj"
-
-    try:
-        msg = MIMEText(body)
-        msg["Subject"] = subject
-        msg["From"] = sender_email
-        msg["To"] = admin_email
-
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(sender_email, sender_password)
-            server.sendmail(sender_email, [admin_email], msg.as_string())
-
-        return {"message": "Gửi email thành công"}
-
-    except Exception as e:
-        return {"error": str(e)}"""
-
 def send_alert_email(alert_data, admin_name, admin_email):
     subject = "[CẢNH BÁO] Tấn công DDOS được phát hiện"
     body = f"""
