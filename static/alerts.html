@@ -81,7 +81,7 @@
             const data = JSON.parse(event.data);
             alertData = data;
             renderAlerts();
-            sendEmailForNewAlerts(data); 
+            //sendEmailForNewAlerts(data); 
         };
         function sendEmailForNewAlerts(data) {
             const newAlerts = data.filter(alert => !sentAlertIds.has(alert.id));
@@ -101,10 +101,10 @@
                 })
                 .then(response => response.json())
                 .then(result => {
-                    console.log("✅ Gửi email thành công:", result);
+                    console.log(" Gửi email thành công:", result);
                 })
                 .catch(error => {
-                    console.error("❌ Lỗi khi gửi email:", error);
+                    console.error(" Lỗi khi gửi email:", error);
                 });
             }
         }

