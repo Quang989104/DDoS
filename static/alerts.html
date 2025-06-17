@@ -114,10 +114,9 @@
             for (const alert of filtered) {
                 const row = document.createElement("tr");
                 row.classList.add(`alert-${alert.level}`);
-                console.log(alert)
                 row.innerHTML = `
                     <td>${alert.timestamp}</td>
-                    <td>${alert.alert_type}</td>
+                    <td>${alert.attack_type}</td>
                     <td>${alert.alert_message}</td>
                     <td>${capitalize(alert.level)}</td>
                     <td class="ip-cell">${alert.source_ip}</td>

@@ -55,6 +55,8 @@ except Exception as e:
 finally:
     conn.close()
 
+
+
 conn = sqlite3.connect("network_monitoring.db", check_same_thread=False)
 cursor = conn.cursor()
 reset_tokens = {}
@@ -490,75 +492,58 @@ def login(data: LoginRequest):
 @app.websocket("/ws/alerts")
 async def websocket_alerts(websocket: WebSocket):
     await websocket.accept()
-    last_count = -1 
+    last_count = -1
 
     try:
         while True:
             with sqlite3.connect("network_monitoring.db") as conn:
                 cursor = conn.cursor()
 
+                # Kiểm tra số lượng cảnh báo hiện tại
                 cursor.execute("SELECT COUNT(*) FROM Alerts")
                 current_count = cursor.fetchone()[0]
 
                 if current_count != last_count:
-                    cursor.execute("SELECT * FROM Alerts ORDER BY timestamp DESC")
+                    cursor.execute("""
+                        SELECT 
+                            a.id, a.alert_message,
+                            al.attack_type, al.level,
+                            t.source_ip, t.bandwidth_usage, t.packet_count, t.timestamp,
+                            ad.username, ad.email
+                        FROM Alerts a
+                        JOIN AttackLogs al ON a.attack_log_id = al.id
+                        JOIN TrafficLogs t ON al.traffic_log_id = t.id
+                        LEFT JOIN Admin ad ON a.admin_id = ad.id
+                        ORDER BY t.timestamp DESC
+                    """)
                     rows = cursor.fetchall()
 
                     alerts = []
                     for row in rows:
-                        traffic_log_id = row[1]
-                        admin_id = row[2]
-
-                        bandwidth_usage= None
-                        packet_count = None
-                        source_ip = None
-
-                        if traffic_log_id:
-                            cursor.execute(
-                                "SELECT source_ip, bandwidth_usage, packet_count FROM TrafficLogs WHERE id = ?",
-                                (traffic_log_id,)
-                            )
-                            traffic_data = cursor.fetchone()
-                            if traffic_data:
-                                source_ip, bandwidth_usage, packet_count = traffic_data
-
-                        admin_name = None
-                        admin_email = None
-                        if admin_id:
-                            cursor.execute(
-                                "SELECT username, email FROM Admin WHERE id = ?",
-                                (admin_id,)
-                            )
-                            admin_data = cursor.fetchone()
-                            if admin_data:
-                                admin_name, admin_email = admin_data
-
                         alert = {
                             "id": row[0],
-                            "attack_log_id": row[1],
-                            "admin_id": row[2],
-                            "timestamp": row[3],
-                            "alert_message": row[4],
-                            "alert_type": row[5],
-                            "level": row[6],
-                            "source_ip": source_ip,
-                            "bandwidth_usage": bandwidth_usage,
-                            "packet_count": packet_count,
-                            "admin_name": admin_name,
-                            "admin_email": admin_email
+                            "alert_message": row[1],
+                            "attack_type": row[2],
+                            "level": row[3],
+                            "source_ip": row[4],
+                            "bandwidth_usage": row[5],
+                            "packet_count": row[6],
+                            "timestamp": row[7],
+                            "admin_name": row[8],
+                            "admin_email": row[9],
                         }
                         alerts.append(alert)
 
                     await websocket.send_json(alerts)
-
                     last_count = current_count
 
-            await asyncio.sleep(1) 
+            await asyncio.sleep(1)
 
     except WebSocketDisconnect:
-        print(" WebSocket client disconnected.")
+        print("❌ WebSocket client đã ngắt kết nối.")
     except Exception as e:
-        print(f" Lỗi WebSocket Alerts: {e}")
+        print(f"❌ Lỗi WebSocket Alerts: {e}")
+
 
 
 
@@ -569,44 +554,51 @@ async def websocket_reports(websocket: WebSocket):
 
     try:
         while True:
-            conn = sqlite3.connect("network_monitoring.db")
-            cursor = conn.cursor()
-            cursor.execute("SELECT COUNT(*) FROM AttackLogs")
-            current_count = cursor.fetchone()[0]
+            with sqlite3.connect("network_monitoring.db") as conn:
+                cursor = conn.cursor()
 
-            if current_count != last_count:
-                cursor.execute("SELECT * FROM AttackLogs ORDER BY timestamp DESC")
-                rows = cursor.fetchall()
+                # Đếm số lượng bản ghi Reports thay vì AttackLogs
+                cursor.execute("SELECT COUNT(*) FROM Reports")
+                current_count = cursor.fetchone()[0]
 
-                reports = []
-                for row in rows:
-                    traffic_log_id = row[6]
-                    cursor.execute("SELECT bandwidth_usage FROM TrafficLogs WHERE id = ?", (traffic_log_id,))
-                    bandwidth_result = cursor.fetchone()
-                    bandwidth_usage = bandwidth_result[0] if bandwidth_result else None
+                if current_count != last_count:
+                    cursor.execute("""
+                        SELECT 
+                            r.id, t.timestamp, t.source_ip, t.packet_count,
+                            t.bandwidth_usage, al.attack_type, al.level,
+                            r.admin_id, r.attack_log_id
+                        FROM Reports r
+                        JOIN AttackLogs al ON r.attack_log_id = al.id
+                        JOIN TrafficLogs t ON al.traffic_log_id = t.id
+                        ORDER BY t.timestamp DESC
+                    """)
+                    rows = cursor.fetchall()
 
-                    report = {
-                        "id": row[0],
-                        "timestamp": row[1],
-                        "source_ip": row[2],
-                        "packet_count": row[3],
-                        "bandwidth_usage": bandwidth_usage,
-                        "attack_type": row[4],
-                        "level": row[5],
-                        "traffic_log_id": traffic_log_id
-                    }
-                    reports.append(report)
+                    reports = []
+                    for row in rows:
+                        report = {
+                            "id": row[0],
+                            "timestamp": row[1],
+                            "source_ip": row[2],
+                            "packet_count": row[3],
+                            "bandwidth_usage": row[4],
+                            "attack_type": row[5],
+                            "level": row[6],
+                            "admin_id": row[7],
+                            "attack_log_id": row[8]
+                        }
+                        reports.append(report)
 
-                await websocket.send_json(reports)
-                last_count = current_count
+                    await websocket.send_json(reports)
+                    last_count = current_count
 
-            conn.close()
             await asyncio.sleep(1)
 
     except WebSocketDisconnect:
-        print(" Client đã ngắt kết nối WebSocket.")
+        print("❌ Client đã ngắt kết nối WebSocket.")
     except Exception as e:
-        print(f" Lỗi khi xử lý WebSocket: {e}")
+        print(f"❌ Lỗi khi xử lý WebSocket Reports: {e}")
+
 
 import aiosqlite
 
@@ -641,92 +633,82 @@ async def websocket_traffic(websocket: WebSocket):
                 if message.strip().lower() == "ping":
                     await websocket.send_text("pong")
                     continue
+
                 try:
                     data = json.loads(message)
                 except json.JSONDecodeError:
-                    print(f"Dữ liệu không hợp lệ từ client: {message}")
+                    print(f"❌ Dữ liệu không hợp lệ từ client: {message}")
                     continue
 
                 source_ip = data.get("source_ip")
                 if isinstance(source_ip, list):
                     source_ip = "   ".join(source_ip)
+
                 bandwidth = data.get("bandwidth_usage", 0)
+
                 if bandwidth > threshold:
-                    conn = sqlite3.connect("network_monitoring.db")
-                    cursor = conn.cursor()
-                    cursor.execute("""
-                        INSERT INTO TrafficLogs (timestamp, source_ip, destination_ip, packet_count, bandwidth_usage)
-                        VALUES (?, ?, ?, ?, ?)
-                    """, (
-                        data.get("timestamp"),
-                        source_ip,
-                        data.get("destination_ip"),
-                        data.get("packet_count"),
-                        data.get("bandwidth_usage")
-                    ))
-                    traffic_log_id = cursor.lastrowid
+                    with sqlite3.connect("network_monitoring.db") as conn:
+                        cursor = conn.cursor()
 
-                    level = None
-                    if bandwidth > threshold+60:
-                        level = "High"
-                    elif bandwidth > threshold+30:
-                        level = "Medium"
-                    elif bandwidth > threshold:
-                        level = "Low"
-
-                    if level:
+                        # 1. Thêm vào TrafficLogs
                         cursor.execute("""
-                            INSERT INTO AttackLogs (
-                                timestamp, source_ip, packet_count,
-                                attack_type, level, traffic_log_id
-                            )
-                            VALUES (?, ?, ?, ?, ?, ?)
+                            INSERT INTO TrafficLogs (timestamp, source_ip, destination_ip, packet_count, bandwidth_usage)
+                            VALUES (?, ?, ?, ?, ?)
                         """, (
                             data.get("timestamp"),
                             source_ip,
+                            data.get("destination_ip"),
                             data.get("packet_count"),
+                            bandwidth
+                        ))
+                        traffic_log_id = cursor.lastrowid
+
+                        # 2. Xác định mức độ tấn công
+                        if bandwidth > threshold + 60:
+                            level = "High"
+                        elif bandwidth > threshold + 30:
+                            level = "Medium"
+                        else:
+                            level = "Low"
+
+                        # 3. Thêm vào AttackLogs
+                        cursor.execute("""
+                            INSERT INTO AttackLogs (
+                                attack_type, level, traffic_log_id
+                            )
+                            VALUES (?, ?, ?)
+                        """, (
                             data.get("attack_type"),
                             level,
                             traffic_log_id
                         ))
 
-                        cursor.execute("""
-                            SELECT id FROM AttackLogs
-                            WHERE timestamp = ? AND attack_type = ?
-                            ORDER BY id DESC LIMIT 1
-                        """, (data.get("timestamp"), data.get("attack_type")))
-                        result = cursor.fetchone()
-                        attack_log_id = result[0] if result else None
+                        attack_log_id = cursor.lastrowid
 
+                        # 4. Thêm vào Reports (bỏ timestamp)
                         cursor.execute("""
                             INSERT INTO Reports (
-                                timestamp, attack_log_id, admin_id,
-                                trafic_data, attack_type, level
+                                attack_log_id, admin_id
                             )
-                            VALUES (?, ?, ?, ?, ?, ?)
+                            VALUES (?, ?)
                         """, (
-                            data.get("timestamp"),
                             attack_log_id,
-                            "1",
-                            "Abnormal traffic increase",
-                            data.get("attack_type"),
-                            level,
+                            1
                         ))
 
+                        # 5. Thêm vào Alerts (bỏ timestamp)
                         cursor.execute("""
                             INSERT INTO Alerts (
-                                attack_log_id, admin_id, timestamp, alert_message,
-                                alert_type, level
+                                attack_log_id, admin_id, alert_message
                             )
-                            VALUES (?, ?, ?, ?, ?, ?)
+                            VALUES (?, ?, ?)
                         """, (
-                            traffic_log_id,
-                            "1",
-                            data.get("timestamp"),
-                            "Abnormal traffic increase",
-                            data.get("attack_type"),
-                            level
+                            attack_log_id,
+                            1,
+                            "Abnormal traffic increase"
                         ))
+
+                        # 6. Gửi email nếu cần
                         admin = get_admin_info()
                         if admin:
                             alert_data = {
@@ -734,18 +716,15 @@ async def websocket_traffic(websocket: WebSocket):
                                 "timestamp": data.get("timestamp"),
                                 "attack_type": data.get("attack_type"),
                                 "packet_count": data.get("packet_count"),
-                                "bandwidth_usage": data.get("bandwidth_usage"),
+                                "bandwidth_usage": bandwidth,
                                 "level": level,
                                 "source_ip": source_ip,
                             }
-
                             send_alert_email(alert_data, admin["username"], admin["email"])
 
+                        conn.commit()
 
-
-                    conn.commit()
-                    conn.close()
-
+                # Gửi dữ liệu về tất cả client đang kết nối
                 disconnected_clients = []
                 for client in active_connections:
                     try:
@@ -763,7 +742,7 @@ async def websocket_traffic(websocket: WebSocket):
     finally:
         if websocket in active_connections:
             active_connections.remove(websocket)
-            print(f"Client disconnected: {websocket.client}")
+            print(f"❌ Client disconnected: {websocket.client}")
 
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -832,9 +811,6 @@ def create_tables():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS AttackLogs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp TEXT,
-            source_ip TEXT,
-            packet_count INTEGER,
             attack_type TEXT,
             level TEXT,
             traffic_log_id INTEGER
@@ -845,21 +821,14 @@ def create_tables():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         attack_log_id INTEGER,
         admin_id INTEGER,
-        timestamp DATETIME,
         alert_message VARCHAR(255),
-        alert_type VARCHAR(100),
-        level VARCHAR(50),
         FOREIGN KEY (attack_log_id) REFERENCES AttackLogs(id)
     )""")
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS Reports (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        timestamp DATETIME,
         attack_log_id INTEGER,
         admin_id INTEGER,
-        trafic_data TEXT,
-        attack_type VARCHAR(100),
-        level VARCHAR(50),
         FOREIGN KEY (attack_log_id) REFERENCES AttackLogs(id)
     )""")
     conn.commit()

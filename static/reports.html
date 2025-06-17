@@ -213,7 +213,8 @@ function applyFilter() {
         return ((!fromDate || timestamp >= new Date(fromDate)) &&
                (!toDate || timestamp <= new Date(toDate).setHours(23, 59, 59, 999)) &&
                (!severity || r.level === severity)) || 
-               ((!fromDate || timestamp <= new Date(fromDate)) &&
+               ((!severity || r.level === severity) &&
+               (!fromDate || timestamp <= new Date(fromDate)) &&
                (!toDate || timestamp >= new Date(toDate)))
     });
 
@@ -336,7 +337,7 @@ function renderTable(data) {
         }
 
         const headers = Array.from(table.querySelectorAll("thead th"))
-        .slice(0, -1) // Bỏ cột "Hành động"
+        .slice(0, -1) 
         .map(th => `"${th.innerText.trim()}"`)
         .join(",");
 
