@@ -1,4 +1,44 @@
+# DDoS Attack Detection Software
 
+## 🧾 Introduction
+
+This is a **DDoS (Distributed Denial of Service)** attack detection software developed as part of a course project.  
+The system utilizes packet analysis and network traffic inspection techniques to detect abnormal behavior caused by DDoS attacks.
+
+## 🎯 Objectives
+
+- Capture and process network traffic data
+- Apply threshold-based analysis techniques to detect DDoS attacks
+- Classify DoS and DDoS attacks
+- Provide a user-friendly interface for real-time traffic monitoring and alerting
+- Scalable and suitable for integration into real network environments
+
+## ⚙️ Technologies Used
+
+| Component         | Technologies                        |
+|-------------------|-------------------------------------|
+| Programming Languages | Python, JavaScript             |
+| Front-end Interface   | HTML, CSS                      |
+| Packet Capturing      | Scapy, Tshark, NCAP            |
+| Database              | SQLite3                        |
+| Data Visualization    | Chart.js (JavaScript), Plotly (Python) |
+
+## 🚀 Setup Instructions
+
+1. Install the required libraries:  
+   `pip install -r requirements.txt`
+
+2. Install NCAP
+
+3. Start the FastAPI server:  
+   `uvicorn app:app --reload`
+
+4. Open the web interface:  
+   `http://127.0.0.1:8000/`
+
+5. Login with default credentials:
+Username: Admin
+Password: 123
 6. Run the packet analysis script:  
 `python detect_ddos.py`
 
