@@ -24,23 +24,22 @@ Công nghệ sử dụng:
  SETTING: 
  
  1. Cài đặt thư viện cần thiết:
- ```markdown
- pip install -r requirements.txt
+ `pip install -r requirements.txt`
     
  2. Cài đặt NCAP
     
  3. Khởi động server FastAPI:
-    uvicorn app:app --reload
+    `uvicorn app:app --reload`
 
  4. Truy cập giao diện:
-  http://127.0.0.1:8000/
+  `http://127.0.0.1:8000/`
 
  5. Đăng nhập tài khoản:
     Username: Admin
     Password: 123
 
  6. Chạy file detect_ddos.py phân tích gói tin:
-    python detect_ddos.py
+   `python detect_ddos.py`
 
 DEMO:
 
