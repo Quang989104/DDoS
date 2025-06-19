@@ -22,8 +22,9 @@ Công nghệ sử dụng:
  Đồ thị trực quan | chartjs, ploty 
 
  SETTING: 
- ```bash
- 1. Cài đặt thư viện cần thiết: pip install -r requirements.txt
+ 
+ 1. Cài đặt thư viện cần thiết:
+```bashpip install -r requirements.txt
     
  2. Cài đặt NCAP
     
