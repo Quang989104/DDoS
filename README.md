@@ -24,7 +24,7 @@ Công nghệ sử dụng:
  SETTING: 
  
  1. Cài đặt thư viện cần thiết:
-```bashpip install -r requirements.txt
+```markdown pip install -r requirements.txt
     
  2. Cài đặt NCAP
     
