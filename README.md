@@ -1,11 +1,11 @@
 # DDoS Attack Detection Software
 
-## 🧾 Introduction
+##  Introduction
 
 This is a **DDoS (Distributed Denial of Service)** attack detection software developed as part of a course project.  
 The system utilizes packet analysis and network traffic inspection techniques to detect abnormal behavior caused by DDoS attacks.
 
-## 🎯 Objectives
+##  Objectives
 
 - Capture and process network traffic data
 - Apply threshold-based analysis techniques to detect DDoS attacks
@@ -23,7 +23,7 @@ The system utilizes packet analysis and network traffic inspection techniques to
 | Database              | SQLite3                        |
 | Data Visualization    | Chart.js (JavaScript), Plotly (Python) |
 
-## 🚀 Setup Instructions
+##  Setup Instructions
 
 1. Install the required libraries:  
    `pip install -r requirements.txt`
