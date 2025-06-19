@@ -40,6 +40,12 @@ Công nghệ sử dụng:
     python detect_ddos.py
 
 DEMO:
+
 ![Giao diện Login](static/assets/Login.png)
+![Giao diện Login](static/assets/Main.png)
+![Giao diện Login](static/assets/Alert.png)
+![Giao diện Login](static/assets/Report.png)
+![Giao diện Login](static/assets/Setting.png)
+![Giao diện Login](static/assets/gmail.png)
 
  
