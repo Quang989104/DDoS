@@ -26,7 +26,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 active_connections: List[WebSocket] = []
-
+"""
 conn = sqlite3.connect('network_monitoring.db')
 cursor = conn.cursor()
 
@@ -54,7 +54,7 @@ except Exception as e:
 
 finally:
     conn.close()
-
+"""
 
 
 conn = sqlite3.connect("network_monitoring.db", check_same_thread=False)

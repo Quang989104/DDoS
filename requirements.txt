@@ -9,3 +9,4 @@ python-multipart
 websockets
 requests
 aiosqlite
+websocket-client

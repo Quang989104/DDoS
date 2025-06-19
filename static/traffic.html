@@ -187,7 +187,7 @@
         const $tableBody = $('#suspiciousIpTable');
         $tableBody.empty();
 
-        let filteredData = data.filter(item => item.bandwidth_usage > 50 && item.bandwidth_usage<70);
+        let filteredData = data.filter(item => item.bandwidth_usage > 50);
 
         if (limit) {
             filteredData = filteredData
